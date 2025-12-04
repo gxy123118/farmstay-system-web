@@ -144,7 +144,6 @@ const handleSubmit = async () => {
     <section class="login-panel">
       <article class="login-card">
         <header>
-          <p class="eyebrow">{{ isRegisterMode ? '新用户注册' : '双角色登录' }}</p>
           <h2>你好, 欢迎使用农家乐服务平台</h2>
         </header>
 
@@ -203,13 +202,15 @@ const handleSubmit = async () => {
   grid-template-columns: minmax(320px, 420px) 1fr;
   gap: 2rem;
   padding: 3rem;
-  background: #eef2ff;
+  background:
+    radial-gradient(circle at top, rgba(29, 140, 248, 0.25), transparent 40%),
+    radial-gradient(circle at 20% 20%, rgba(252, 211, 77, 0.3), transparent 45%), var(--color-dusk);
 }
 
 .login-hero {
   border-radius: 30px;
   padding: 3rem;
-  background: linear-gradient(135deg, #0f766e, #22d3ee);
+  background: linear-gradient(135deg, #0f766e, #1D8CF83F);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -272,6 +273,7 @@ const handleSubmit = async () => {
 
 .login-card header h2 {
   margin: 0.5rem 0 1.5rem;
+  color: #0f766e;
 }
 
 .login-form {

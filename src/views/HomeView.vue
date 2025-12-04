@@ -105,6 +105,7 @@ const loadRecommendations = async () => {
       throw new Error(payload.message || '无法获取推荐房源')
     }
     const list = Array.isArray(payload.data) ? payload.data : []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     stays.value = list.map((item: any) => ({
       id: item.id,
       name: item.name,
@@ -156,7 +157,6 @@ onMounted(() => {
   <div class="home-page">
     <header class="home-topbar">
       <div>
-        <p class="topbar-eyebrow">连接游客与经营者的乡野旅居平台</p>
         <h2>一处入口，掌握所有农家乐体验</h2>
       </div>
       <button class="auth-button" type="button" @click="handleAuthButton">
@@ -184,7 +184,6 @@ onMounted(() => {
     </section>
 
     <section class="home-search">
-      <h2>精准搜索与筛选</h2>
       <div class="search-form">
         <label>
           <span>目的地</span>
@@ -232,7 +231,7 @@ onMounted(() => {
             ></div>
             <div class="stay-body">
               <div class="stay-head">
-                <div>
+                <div style="color: #0f766e">
                   <h3>{{ stay.name }}</h3>
                   <p>{{ stay.city }}</p>
                 </div>
@@ -275,6 +274,9 @@ onMounted(() => {
   flex-direction: column;
   gap: 2.5rem;
   padding: 2rem;
+  background:
+    radial-gradient(circle at top, rgba(29, 140, 248, 0.25), transparent 40%),
+    radial-gradient(circle at 20% 20%, rgba(252, 211, 77, 0.3), transparent 45%), var(--color-dusk);
 }
 
 .home-topbar {
@@ -284,7 +286,7 @@ onMounted(() => {
   gap: 1rem;
   padding: 1rem 1.25rem;
   border-radius: 18px;
-  background: #fff;
+  background: linear-gradient(135deg, #0f766e, #22d3ee);;
   box-shadow: 0 15px 30px rgba(15, 23, 42, 0.12);
 }
 
@@ -321,8 +323,7 @@ onMounted(() => {
 }
 
 .home-hero {
-  background: linear-gradient(135deg, #0f766e, #34d399);
-  border-radius: 24px;
+  background: linear-gradient(135deg, #0f766e, #22d3ee); /* 蓝色+绿色的组合 */  border-radius: 24px;
   padding: 2.5rem;
   color: #fff;
   box-shadow: 0 20px 45px rgba(15, 118, 110, 0.35);
@@ -397,7 +398,7 @@ onMounted(() => {
 
 .search-form input,
 .search-form select {
-  border: 1px solid #d1d5db;
+  border: 1px solid #0f766e;
   border-radius: 12px;
   padding: 0.7rem;
   font-size: 1rem;
@@ -509,7 +510,7 @@ onMounted(() => {
 }
 
 .amenities {
-  background: #f8fafc;
+  background: linear-gradient(135deg, #0f766e, #22d3ee);
   border-radius: 24px;
   padding: 2rem;
 }
@@ -518,6 +519,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
+  color: #0f766e;
   margin-top: 1.2rem;
 }
 
