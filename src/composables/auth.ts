@@ -25,6 +25,16 @@ export const readAuthPayload = (): AuthTokenPayload | null => {
   }
 }
 
+export const persistAuthPayload = (payload: AuthTokenPayload) => {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload))
+}
+
+export const clearAuthPayload = () => {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(AUTH_STORAGE_KEY)
+}
+
 export const useAuthState = () => {
   const payload = ref<AuthTokenPayload | null>(null)
   const sync = () => {

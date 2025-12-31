@@ -1,15 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { AUTH_STORAGE_KEY } from '../composables/auth'
 import { useRouter } from 'vue-router'
+import { apiLogin, apiRegister, LOGIN_REDIRECT_KEY } from '../services/api'
+import { persistAuthPayload, readAuthPayload, type AuthTokenPayload } from '../composables/auth'
 
-type TokenPayload = {
-  token: string
-  loginType: string
-  expire: number
-  username?: string
-  displayName?: string
-}
+type TokenPayload = AuthTokenPayload
 
 const loginHeroStats = [
   { label: '合作农家乐', value: '220+' },
@@ -29,20 +24,10 @@ const isSubmitting = ref(false)
 const mode = ref<'login' | 'register'>('login')
 
 const loadPersistedToken = (): TokenPayload | null => {
-  const raw = localStorage.getItem(AUTH_STORAGE_KEY)
-  if (!raw) {
-    return null
-  }
-  try {
-    return JSON.parse(raw) as TokenPayload
-  } catch {
-    return null
-  }
+  return readAuthPayload()
 }
 
 const tokenInfo = ref<TokenPayload | null>(loadPersistedToken())
-
-const apiBase = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 
 const isRegisterMode = computed(() => mode.value === 'register')
 
@@ -64,10 +49,6 @@ const setFeedback = (message: string, type: 'success' | 'error') => {
   feedback.type = type
 }
 
-const persistToken = (payload: TokenPayload) => {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload))
-}
-
 const toggleMode = () => {
   mode.value = isRegisterMode.value ? 'login' : 'register'
   clearFeedback()
@@ -83,36 +64,40 @@ const handleSubmit = async () => {
   isSubmitting.value = true
   clearFeedback()
   try {
-    const response = await fetch(`${apiBase}/api/auth/${mode.value}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: form.username,
-        password: form.password,
-        userType: form.userType,
-        displayName: isRegisterMode.value ? form.displayName : undefined,
-      }),
-    })
-    const payload = await response.json()
-    if (!response.ok || payload.code !== 200) {
-      throw new Error(payload.message || '请求失败')
-    }
+    const payload =
+      mode.value === 'register'
+        ? await apiRegister({
+            username: form.username,
+            password: form.password,
+            userType: form.userType,
+            displayName: form.displayName,
+          })
+        : await apiLogin({
+            username: form.username,
+            password: form.password,
+            userType: form.userType,
+          })
+
     const storedPayload: TokenPayload = {
-      ...payload.data,
+      ...payload,
       username: form.username,
       displayName: form.displayName || form.username,
     }
     tokenInfo.value = storedPayload
-    persistToken(storedPayload)
+    persistAuthPayload(storedPayload)
     if (isRegisterMode.value) {
       setFeedback('注册成功，已自动登录，请确认页面右侧信息', 'success')
       mode.value = 'login'
     } else {
       setFeedback('登录成功，令牌已准备就绪', 'success')
     }
-    await router.push({ name: 'home' })
+    const redirect = localStorage.getItem(LOGIN_REDIRECT_KEY)
+    if (redirect) {
+      localStorage.removeItem(LOGIN_REDIRECT_KEY)
+      await router.replace(redirect)
+    } else {
+      await router.replace({ name: 'home' })
+    }
   } catch (error) {
     if (error instanceof Error) {
       setFeedback(error.message, 'error')
@@ -131,7 +116,7 @@ const handleSubmit = async () => {
       <p class="hero-eyebrow">游客与经营者的乡野联动</p>
       <h1>在农家乐与管理之间切换自如</h1>
       <p class="hero-copy">
-        全平台覆盖游客预订与经营者后台，实时同步库存、订单与评论，帮助你快速上架并获得更多好评。
+        覆盖游客预订与经营者后台，实时同步库存、订单与评价，帮助你快速上架并获得更多好评。
       </p>
       <div class="hero-stats">
         <article v-for="stat in loginHeroStats" :key="stat.label">
@@ -144,13 +129,13 @@ const handleSubmit = async () => {
     <section class="login-panel">
       <article class="login-card">
         <header>
-          <h2>你好, 欢迎使用农家乐服务平台</h2>
+          <h2>欢迎使用农家乐服务平台</h2>
         </header>
 
         <form class="login-form" @submit.prevent="handleSubmit">
           <label class="input-label">
             <span>账号:</span>
-            <input v-model="form.username" type="text" placeholder="输入手机号或账号" autocomplete="username" />
+            <input v-model="form.username" type="text" placeholder="输入账号" autocomplete="username" />
           </label>
 
           <label class="input-label">
@@ -160,7 +145,7 @@ const handleSubmit = async () => {
 
           <label v-if="isRegisterMode" class="input-label">
             <span>昵称:</span>
-            <input v-model="form.displayName" type="text" placeholder="呈现给其他人看的名字" />
+            <input v-model="form.displayName" type="text" placeholder="展示给他人的名字" />
           </label>
 
           <label class="input-label select-label">
@@ -179,7 +164,7 @@ const handleSubmit = async () => {
 
           <button class="btn-submit" type="submit" :disabled="isSubmitting || !canSubmit">
             <span v-if="!isSubmitting">{{ isRegisterMode ? '注册并登录' : '登录' }}</span>
-            <span v-else>通信中 …</span>
+            <span v-else>通信中…</span>
           </button>
         </form>
 
@@ -210,7 +195,7 @@ const handleSubmit = async () => {
 .login-hero {
   border-radius: 30px;
   padding: 3rem;
-  background: linear-gradient(135deg, #0f766e, #1D8CF83F);
+  background: linear-gradient(135deg, #0f766e, #1d8cf83f);
   color: #fff;
   display: flex;
   flex-direction: column;
