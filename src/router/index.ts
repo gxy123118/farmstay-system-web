@@ -5,6 +5,7 @@ import PersonalCenter from '../views/PersonalCenter.vue'
 import FarmStayDetail from '../views/FarmStayDetail.vue'
 import PaymentView from '../views/PaymentView.vue'
 import OrderDetail from '../views/OrderDetail.vue'
+import ReviewView from '../views/ReviewView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -38,6 +39,11 @@ const router = createRouter({
       path: '/orders/:orderId',
       name: 'order-detail',
       component: OrderDetail,
+    },
+    {
+      path: '/orders/:orderId/review',
+      name: 'order-review',
+      component: ReviewView,
     },
   ],
 })

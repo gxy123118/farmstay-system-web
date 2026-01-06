@@ -57,7 +57,11 @@ const request = async <T = unknown>(
 }
 
 export const apiLogin = (payload: { username: string; password: string; userType: string }) =>
-  request<{ token: string; loginType: string; expire: number }>('/api/auth/login', 'POST', payload)
+  request<{ token: string; loginType: string; expire: number; userId: number }>(
+    '/api/auth/login',
+    'POST',
+    payload,
+  )
 
 export const apiRegister = (payload: {
   username: string
@@ -65,7 +69,11 @@ export const apiRegister = (payload: {
   userType: string
   displayName?: string
 }) =>
-  request<{ token: string; loginType: string; expire: number }>('/api/auth/register', 'POST', payload)
+  request<{ token: string; loginType: string; expire: number; userId: number }>(
+    '/api/auth/register',
+    'POST',
+    payload,
+  )
 
 export const apiOverview = () => request('/api/home/overview')
 
@@ -87,7 +95,7 @@ export const apiListFarmstays = (params: { city?: string; keyword?: string; pric
   return request(`/api/farmstays/search/${suffix}`)
 }
 
-export const apiFarmstayDetail = (id: number) => request(`/api/farmstays/${id}`)
+export const apiFarmstayDetail = (id: number) => request(`/api/farmstays/detail/${id}`)
 export const apiCreateFarmstay = (payload: Record<string, unknown>) =>
   request('/api/farmstays', 'POST', payload)
 export const apiUpdateFarmstay = (id: number, payload: Record<string, unknown>) =>
@@ -104,6 +112,8 @@ export const apiCreateBooking = (payload: Record<string, unknown>) =>
 export const apiPayBooking = (payload: Record<string, unknown>) => request('/api/bookings/pay', 'POST', payload)
 export const apiCancelBooking = (orderId: number) =>
   request(`/api/bookings/${orderId}/cancel`, 'POST')
+export const apiRefundBooking = (orderId: number) =>
+  request(`/api/bookings/${orderId}/refund`, 'POST')
 export const apiUpdateBookingStatus = (payload: Record<string, unknown>) =>
   request('/api/bookings/status', 'PUT', payload)
 export const apiMyOrders = () => request('/api/bookings/mine')
@@ -112,10 +122,11 @@ export const apiOwnerOrders = (farmStayId: number) =>
 
 export const apiListReviews = (farmStayId: number) =>
   request(`/api/reviews?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
+export const apiGetReviewByOrder = (orderId: number) => request(`/api/reviews/order/${orderId}`)
+export const apiUpdateReview = (orderId: number, payload: Record<string, unknown>) =>
+  request(`/api/reviews/order/${orderId}`, 'PUT', payload)
 export const apiCreateReview = (payload: Record<string, unknown>) =>
   request('/api/reviews', 'POST', payload)
-export const apiModerateReview = (id: number, status: string) =>
-  request(`/api/reviews/${id}/status?${new URLSearchParams({ status }).toString()}`, 'PUT')
 
 export const apiListCoupons = (farmStayId?: number) => {
   const params = farmStayId ? `?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}` : ''

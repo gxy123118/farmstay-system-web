@@ -80,6 +80,7 @@ const handleSubmit = async () => {
 
     const storedPayload: TokenPayload = {
       ...payload,
+      userId: payload.userId,
       username: form.username,
       displayName: form.displayName || form.username,
     }

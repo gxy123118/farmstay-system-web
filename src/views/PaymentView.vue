@@ -2,14 +2,9 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiMyOrders, apiPayBooking } from '../services/api'
+import type { BookingDetail } from '../types/booking'
 
-type Order = {
-  id: number
-  orderNo: string
-  status: string
-  totalAmount?: number
-  farmStayId?: number
-}
+type Order = BookingDetail
 
 const route = useRoute()
 const router = useRouter()
@@ -66,6 +61,8 @@ onMounted(() => {
         <p>订单号：{{ order.orderNo }}</p>
         <p>金额：¥{{ order.totalAmount ?? '-' }}</p>
         <p>状态：{{ order.status }}</p>
+        <p class="muted order-meta">农家乐：{{ order.farmStay?.name || '暂无信息' }} · {{ order.farmStay?.city || '-' }}</p>
+        <p class="muted order-meta">房型：{{ order.room?.name || '暂无房型' }} · ¥{{ order.room?.price ?? '-' }}</p>
         <div class="actions">
           <button class="btn primary" :disabled="paying || order.status === 'PAID'" @click="pay">
             {{ order.status === 'PAID' ? '已支付' : paying ? '支付中...' : '去支付' }}
@@ -108,6 +105,12 @@ onMounted(() => {
   background: #fee2e2;
   border-color: #fecdd3;
   color: #b91c1c;
+}
+
+.order-meta {
+  font-size: 0.85rem;
+  color: #475569;
+  margin-bottom: 0.25rem;
 }
 
 .actions {

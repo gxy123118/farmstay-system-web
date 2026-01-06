@@ -32,7 +32,6 @@ type Review = {
   id: number
   rating: number
   content: string
-  status: string
   createdAt: string
 }
 
@@ -67,11 +66,61 @@ const bookingForm = reactive({
   remarks: '',
 })
 
+const formErrors = reactive({
+  roomTypeId: '',
+  checkInDate: '',
+  checkOutDate: '',
+  contactName: '',
+  contactPhone: '',
+})
+
 const ratingStars = [1, 2, 3, 4, 5]
 
 const formatDateTime = (date: string) => {
   if (!date) return ''
   return new Date(date).toISOString()
+}
+
+const resetFormErrors = () => {
+  formErrors.roomTypeId = ''
+  formErrors.checkInDate = ''
+  formErrors.checkOutDate = ''
+  formErrors.contactName = ''
+  formErrors.contactPhone = ''
+}
+
+const validateBookingForm = () => {
+  let valid = true
+  resetFormErrors()
+  if (!bookingForm.roomTypeId.trim()) {
+    formErrors.roomTypeId = '请选择房型'
+    valid = false
+  }
+  if (!bookingForm.checkInDate.trim()) {
+    formErrors.checkInDate = '请选择入住日期'
+    valid = false
+  }
+  if (!bookingForm.checkOutDate.trim()) {
+    formErrors.checkOutDate = '请选择离店日期'
+    valid = false
+  }
+  if (bookingForm.checkInDate && bookingForm.checkOutDate) {
+    const inDate = new Date(bookingForm.checkInDate)
+    const outDate = new Date(bookingForm.checkOutDate)
+    if (outDate <= inDate) {
+      formErrors.checkOutDate = '退房时间必须晚于入住时间'
+      valid = false
+    }
+  }
+  if (!bookingForm.contactName.trim()) {
+    formErrors.contactName = '请填写联系人'
+    valid = false
+  }
+  if (!bookingForm.contactPhone.trim()) {
+    formErrors.contactPhone = '请填写联系电话'
+    valid = false
+  }
+  return valid
 }
 
 const loadDetail = async () => {
@@ -98,6 +147,10 @@ const selectRoom = (room: Room) => {
 
 const submitBooking = async () => {
   if (!farmStay.value) return
+  if (!validateBookingForm()) {
+    return
+  }
+  error.value = ''
   try {
     const payload = {
       farmStayId: farmStay.value.id,
@@ -180,19 +233,54 @@ onMounted(() => {
           <span class="muted">需登录后下单，创建后跳转支付页</span>
         </header>
         <div class="form">
-          <label>房型ID <input v-model="bookingForm.roomTypeId" /></label>
-          <label>入住日期 <input v-model="bookingForm.checkInDate" type="date" /></label>
-          <label>离店日期 <input v-model="bookingForm.checkOutDate" type="date" /></label>
+          <label>房型ID
+            <input v-model="bookingForm.roomTypeId" :class="{ 'input-error': formErrors.roomTypeId }" />
+            <span class="field-error" v-if="formErrors.roomTypeId">{{ formErrors.roomTypeId }}</span>
+          </label>
+          <label>入住日期
+            <input
+              v-model="bookingForm.checkInDate"
+              type="date"
+              :class="{ 'input-error': formErrors.checkInDate }"
+            />
+            <span class="field-error" v-if="formErrors.checkInDate">{{ formErrors.checkInDate }}</span>
+          </label>
+          <label>离店日期
+            <input
+              v-model="bookingForm.checkOutDate"
+              type="date"
+              :class="{ 'input-error': formErrors.checkOutDate }"
+            />
+            <span class="field-error" v-if="formErrors.checkOutDate">{{ formErrors.checkOutDate }}</span>
+          </label>
           <label>人数 <input v-model.number="bookingForm.guests" type="number" min="1" /></label>
-          <label>优惠券码 <input v-model="bookingForm.couponCode" placeholder="可选" /></label>
-          <label>联系人<input v-model="bookingForm.contactName" /></label>
-          <label>电话 <input v-model="bookingForm.contactPhone" /></label>
+          <label v-if="coupons.length">
+            可用优惠券
+            <select v-model="bookingForm.couponCode">
+              <option value="">不使用优惠券</option>
+              <option v-for="c in coupons" :key="c.code" :value="c.code">
+                {{ c.title }}（{{ c.code }}）
+              </option>
+            </select>
+          </label>
+          <div v-else class="muted note">暂无可用优惠券</div>
+          <label>联系人
+            <input
+              v-model="bookingForm.contactName"
+              :class="{ 'input-error': formErrors.contactName }"
+            />
+            <span class="field-error" v-if="formErrors.contactName">{{ formErrors.contactName }}</span>
+          </label>
+          <label>电话
+            <input
+              v-model="bookingForm.contactPhone"
+              :class="{ 'input-error': formErrors.contactPhone }"
+            />
+            <span class="field-error" v-if="formErrors.contactPhone">{{ formErrors.contactPhone }}</span>
+          </label>
           <label>备注 <textarea v-model="bookingForm.remarks"></textarea></label>
           <div class="btn-row">
             <button class="btn primary" :disabled="loginType === ''" @click="submitBooking">下单并去支付</button>
-          </div>
-          <div v-if="coupons.length" class="muted">
-            可用优惠券：<span v-for="c in coupons" :key="c.code">{{ c.title }} ({{ c.code }})；</span>
           </div>
         </div>
       </article>
@@ -211,7 +299,7 @@ onMounted(() => {
               <span class="muted">({{ r.rating }}/5)</span>
             </div>
             <p class="muted">{{ r.content }}</p>
-            <p class="muted">状态：{{ r.status }} · 时间：{{ r.createdAt?.slice(0, 10) }}</p>
+            <p class="muted">时间：{{ r.createdAt?.slice(0, 10) }}</p>
           </div>
         </div>
       </div>
@@ -341,10 +429,27 @@ strong {
 }
 
 .form input,
-.form textarea {
+.form textarea,
+.form select {
   border: 1px solid #cbd5e1;
   border-radius: 10px;
   padding: 0.55rem 0.75rem;
+}
+
+.input-error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.25);
+}
+
+.field-error {
+  color: #ef4444;
+  font-size: 0.85rem;
+  min-height: 1.2em;
+}
+
+.note {
+  font-size: 0.85rem;
+  color: #64748b;
 }
 
 .btn-row {

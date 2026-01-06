@@ -6,22 +6,14 @@ import {
   apiCreateRoom,
   apiCreateCoupon,
   apiUpdateBookingStatus,
-  apiModerateReview,
 } from '../services/api'
+import { BookingDetail } from '../types/booking'
 
-type Order = {
-  id: number
-  orderNo: string
-  status: string
-  checkInDate?: string
-  checkOutDate?: string
-  totalAmount?: number
-}
+type Order = BookingDetail
 
 const ownerFarmStayId = ref('')
 const ownerOrders = ref<Order[]>([])
 const flash = reactive({ message: '', type: '' as 'success' | 'error' | '' })
-const reviewModeration = reactive({ reviewId: '', status: 'APPROVED' })
 
 const farmstayForm = reactive({
   name: '',
@@ -120,19 +112,6 @@ const updateOrderStatus = async (orderId: number, status: string) => {
   }
 }
 
-const moderateReview = async () => {
-  if (!reviewModeration.reviewId) {
-    setFlash('请输入评价ID', 'error')
-    return
-  }
-  try {
-    await apiModerateReview(Number(reviewModeration.reviewId), reviewModeration.status)
-    setFlash('评价状态已更新')
-  } catch (err) {
-    setFlash(err instanceof Error ? err.message : '更新失败', 'error')
-  }
-}
-
 onMounted(() => {
   // 可选：自动加载默认农家乐ID的订单
 })
@@ -154,6 +133,11 @@ onMounted(() => {
           <div>
             <strong>{{ o.orderNo }}</strong>
             <p class="muted">状态：{{ o.status }}</p>
+            <p class="muted order-meta">
+              {{ o.farmStay?.name || '未知农家乐' }} · {{ o.farmStay?.city || '' }}
+              <br />
+              房型：{{ o.room?.name || '暂未同步' }} · ¥{{ o.room?.price ?? '-' }}
+            </p>
           </div>
           <div class="list-actions">
             <button class="btn" @click="updateOrderStatus(o.id, 'COMPLETED')">标记完成</button>
@@ -199,21 +183,6 @@ onMounted(() => {
         <button class="btn primary" @click="createCoupon">发券</button>
       </div>
     </article>
-  </section>
-
-  <section class="card">
-    <h3>评价审核</h3>
-    <div class="form inline">
-      <label>评价ID<input v-model="reviewModeration.reviewId" /></label>
-      <label>
-        状态
-        <select v-model="reviewModeration.status">
-          <option value="APPROVED">APPROVED</option>
-          <option value="REJECTED">REJECTED</option>
-        </select>
-      </label>
-      <button class="btn" @click="moderateReview">更新</button>
-    </div>
   </section>
 
   <section v-if="flash.message" class="status" :class="flash.type">
@@ -280,6 +249,12 @@ onMounted(() => {
   display: flex;
   gap: 0.4rem;
   align-items: center;
+}
+
+.order-meta {
+  font-size: 0.85rem;
+  color: #475569;
+  margin-top: 0.2rem;
 }
 
 .grid {

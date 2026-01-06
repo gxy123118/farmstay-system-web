@@ -4,6 +4,7 @@ export interface AuthTokenPayload {
   token: string
   loginType: string
   expire: number
+  userId?: number
   username?: string
   displayName?: string
 }
