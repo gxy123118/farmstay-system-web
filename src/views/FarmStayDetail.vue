@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { apiFarmstayDetail, apiListRooms, apiListReviews, apiCreateBooking, apiListCoupons } from '../services/api'
+import {
+  apiFarmstayDetail,
+  apiListRooms,
+  apiListReviews,
+  apiCreateBooking,
+  apiListCoupons,
+  apiListDining,
+  apiListActivities,
+} from '../services/api'
 import { useAuthState } from '../composables/auth'
 
 type FarmStay = {
@@ -35,6 +43,24 @@ type Review = {
   createdAt: string
 }
 
+type DiningItem = {
+  id: number
+  name: string
+  description?: string
+  price?: number
+  tags?: string
+}
+
+type ActivityItem = {
+  id: number
+  name: string
+  description?: string
+  schedule?: string
+  price?: number
+  capacity?: number
+  tags?: string
+}
+
 type Booking = {
   id: number
   orderNo: string
@@ -52,8 +78,14 @@ const farmStay = ref<FarmStay | null>(null)
 const rooms = ref<Room[]>([])
 const reviews = ref<Review[]>([])
 const coupons = ref<{ code: string; title: string }[]>([])
+const diningItems = ref<DiningItem[]>([])
+const activityItems = ref<ActivityItem[]>([])
 const loading = ref(false)
 const error = ref('')
+const orderTip = ref('')
+const showBookingModal = ref(false)
+const selectedDiningIds = ref<number[]>([])
+const selectedActivityIds = ref<number[]>([])
 
 const bookingForm = reactive({
   roomTypeId: '',
@@ -101,7 +133,7 @@ const validateBookingForm = () => {
     valid = false
   }
   if (!bookingForm.checkOutDate.trim()) {
-    formErrors.checkOutDate = '请选择离店日期'
+    formErrors.checkOutDate = '请选择退房日期'
     valid = false
   }
   if (bookingForm.checkInDate && bookingForm.checkOutDate) {
@@ -133,6 +165,8 @@ const loadDetail = async () => {
     rooms.value = (await apiListRooms(id)) as Room[]
     reviews.value = (await apiListReviews(id)) as Review[]
     coupons.value = (await apiListCoupons(id)) as { code: string; title: string }[]
+    diningItems.value = (await apiListDining(id)) as DiningItem[]
+    activityItems.value = (await apiListActivities(id)) as ActivityItem[]
   } catch (err) {
     error.value = err instanceof Error ? err.message : '加载失败'
   } finally {
@@ -143,6 +177,63 @@ const loadDetail = async () => {
 const selectRoom = (room: Room) => {
   bookingForm.roomTypeId = String(room.id)
   bookingForm.guests = room.maxGuests || 2
+}
+
+const toggleDining = (id: number) => {
+  if (selectedDiningIds.value.includes(id)) {
+    selectedDiningIds.value = selectedDiningIds.value.filter((itemId) => itemId !== id)
+  } else {
+    selectedDiningIds.value = [...selectedDiningIds.value, id]
+  }
+}
+
+const toggleActivity = (id: number) => {
+  if (selectedActivityIds.value.includes(id)) {
+    selectedActivityIds.value = selectedActivityIds.value.filter((itemId) => itemId !== id)
+  } else {
+    selectedActivityIds.value = [...selectedActivityIds.value, id]
+  }
+}
+
+const selectedRoom = computed(() => {
+  return rooms.value.find((room) => String(room.id) === bookingForm.roomTypeId) || null
+})
+
+const selectedDiningItems = computed(() => {
+  return diningItems.value.filter((item) => selectedDiningIds.value.includes(item.id))
+})
+
+const selectedActivityItems = computed(() => {
+  return activityItems.value.filter((item) => selectedActivityIds.value.includes(item.id))
+})
+
+const diningTotal = computed(() => {
+  return selectedDiningItems.value.reduce((sum, item) => sum + (item.price ?? 0), 0)
+})
+
+const activityTotal = computed(() => {
+  return selectedActivityItems.value.reduce((sum, item) => sum + (item.price ?? 0), 0)
+})
+
+const roomTotal = computed(() => selectedRoom.value?.price ?? 0)
+
+const estimatedTotal = computed(() => roomTotal.value + diningTotal.value + activityTotal.value)
+
+const openBookingModal = () => {
+  orderTip.value = ''
+  if (!selectedRoom.value) {
+    orderTip.value = '请先选择房型'
+    return
+  }
+  if (loginType.value === '') {
+    orderTip.value = '请先登录后下单'
+    return
+  }
+  showBookingModal.value = true
+}
+
+const closeBookingModal = () => {
+  showBookingModal.value = false
 }
 
 const submitBooking = async () => {
@@ -159,6 +250,8 @@ const submitBooking = async () => {
       checkOutDate: formatDateTime(bookingForm.checkOutDate),
       guests: bookingForm.guests,
       couponCode: bookingForm.couponCode || undefined,
+      diningItemIds: selectedDiningIds.value,
+      activityItemIds: selectedActivityIds.value,
       contactName: bookingForm.contactName,
       contactPhone: bookingForm.contactPhone,
       remarks: bookingForm.remarks || undefined,
@@ -192,9 +285,13 @@ onMounted(() => {
           <strong>{{ farmStay.priceRange || farmStay.priceLevel || '面议' }}</strong>
         </div>
       </header>
-      <div class="muted">城市：{{ farmStay.city }} · 联系：{{ farmStay.contactPhone || '暂无' }}</div>
+      <div class="muted">
+        城市：{{ farmStay.city }} · 联系：{{ farmStay.contactPhone || '暂无' }}
+      </div>
       <div class="tags">
-        <span v-for="tag in (farmStay.tags || '').split(',').filter(Boolean)" :key="tag">{{ tag }}</span>
+        <span v-for="tag in (farmStay.tags || '').split(',').filter(Boolean)" :key="tag">{{
+          tag
+        }}</span>
       </div>
     </section>
 
@@ -202,7 +299,7 @@ onMounted(() => {
       <article class="card">
         <header class="card-header">
           <h2>房型</h2>
-          <span class="muted">选择房型后填写入住信息</span>
+          <span class="muted">选择房型后再组合餐饮与活动服务</span>
         </header>
         <div class="list">
           <div v-if="!rooms.length" class="muted">暂无房型</div>
@@ -215,7 +312,9 @@ onMounted(() => {
             <div>
               <strong>{{ room.name }}</strong>
               <p class="muted">
-                床型：{{ room.bedType || '-' }} · 人数：{{ room.maxGuests || '-' }} · 库存：{{ room.stock }}
+                床型：{{ room.bedType || '-' }} · 人数：{{ room.maxGuests || '-' }} · 库存：{{
+                  room.stock
+                }}
               </p>
               <p class="muted">标签：{{ room.tags || '无' }}</p>
             </div>
@@ -229,58 +328,101 @@ onMounted(() => {
 
       <article class="card">
         <header class="card-header">
-          <h2>提交预订</h2>
-          <span class="muted">需登录后下单，创建后跳转支付页</span>
+          <h2>已选服务</h2>
+          <span class="muted">选择房型、餐饮和活动后再下单</span>
         </header>
-        <div class="form">
-          <label>房型ID
-            <input v-model="bookingForm.roomTypeId" :class="{ 'input-error': formErrors.roomTypeId }" />
-            <span class="field-error" v-if="formErrors.roomTypeId">{{ formErrors.roomTypeId }}</span>
-          </label>
-          <label>入住日期
-            <input
-              v-model="bookingForm.checkInDate"
-              type="date"
-              :class="{ 'input-error': formErrors.checkInDate }"
-            />
-            <span class="field-error" v-if="formErrors.checkInDate">{{ formErrors.checkInDate }}</span>
-          </label>
-          <label>离店日期
-            <input
-              v-model="bookingForm.checkOutDate"
-              type="date"
-              :class="{ 'input-error': formErrors.checkOutDate }"
-            />
-            <span class="field-error" v-if="formErrors.checkOutDate">{{ formErrors.checkOutDate }}</span>
-          </label>
-          <label>人数 <input v-model.number="bookingForm.guests" type="number" min="1" /></label>
-          <label v-if="coupons.length">
-            可用优惠券
-            <select v-model="bookingForm.couponCode">
-              <option value="">不使用优惠券</option>
-              <option v-for="c in coupons" :key="c.code" :value="c.code">
-                {{ c.title }}（{{ c.code }}）
-              </option>
-            </select>
-          </label>
-          <div v-else class="muted note">暂无可用优惠券</div>
-          <label>联系人
-            <input
-              v-model="bookingForm.contactName"
-              :class="{ 'input-error': formErrors.contactName }"
-            />
-            <span class="field-error" v-if="formErrors.contactName">{{ formErrors.contactName }}</span>
-          </label>
-          <label>电话
-            <input
-              v-model="bookingForm.contactPhone"
-              :class="{ 'input-error': formErrors.contactPhone }"
-            />
-            <span class="field-error" v-if="formErrors.contactPhone">{{ formErrors.contactPhone }}</span>
-          </label>
-          <label>备注 <textarea v-model="bookingForm.remarks"></textarea></label>
+        <div class="summary-list">
+          <div class="summary-item">
+            <span class="muted">房型</span>
+            <strong>{{ selectedRoom?.name || '未选择' }}</strong>
+          </div>
+          <div class="summary-item">
+            <span class="muted">餐饮服务</span>
+            <span>{{
+              selectedDiningItems.length
+                ? selectedDiningItems.map((item) => item.name).join('、')
+                : '未选择'
+            }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="muted">娱乐活动</span>
+            <span>{{
+              selectedActivityItems.length
+                ? selectedActivityItems.map((item) => item.name).join('、')
+                : '未选择'
+            }}</span>
+          </div>
+          <div class="summary-item total">
+            <span>预估总价</span>
+            <strong>¥{{ estimatedTotal }}</strong>
+          </div>
           <div class="btn-row">
-            <button class="btn primary" :disabled="loginType === ''" @click="submitBooking">下单并去支付</button>
+            <button class="btn primary" :disabled="loginType === ''" @click="openBookingModal">
+              下单
+            </button>
+            <span v-if="orderTip" class="field-error">{{ orderTip }}</span>
+          </div>
+          <div v-if="loginType === ''" class="muted note">请先登录后下单</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <header class="card-header">
+          <h2>餐饮服务</h2>
+          <span class="muted">选择需要的餐饮套餐</span>
+        </header>
+        <div class="list">
+          <div v-if="!diningItems.length" class="muted">暂无餐饮信息</div>
+          <div v-for="item in diningItems" :key="item.id" class="list-item">
+            <div>
+              <strong>{{ item.name }}</strong>
+              <p class="muted">{{ item.description || '暂无介绍' }}</p>
+              <p class="muted">标签：{{ item.tags || '-' }}</p>
+            </div>
+            <div class="list-actions">
+              <span class="price">¥{{ item.price ?? '-' }}</span>
+              <label class="chip">
+                <input
+                  type="checkbox"
+                  :checked="selectedDiningIds.includes(item.id)"
+                  @change="toggleDining(item.id)"
+                />
+                选择
+              </label>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <header class="card-header">
+          <h2>娱乐活动</h2>
+          <span class="muted">选择需要的活动项目</span>
+        </header>
+        <div class="list">
+          <div v-if="!activityItems.length" class="muted">暂无活动信息</div>
+          <div v-for="item in activityItems" :key="item.id" class="list-item">
+            <div>
+              <strong>{{ item.name }}</strong>
+              <p class="muted">{{ item.description || '暂无介绍' }}</p>
+              <p class="muted">
+                时间：{{ item.schedule || '-' }} · 名额：{{ item.capacity ?? '-' }}
+              </p>
+              <p class="muted">标签：{{ item.tags || '-' }}</p>
+            </div>
+            <div class="list-actions">
+              <span class="price">¥{{ item.price ?? '-' }}</span>
+              <label class="chip">
+                <input
+                  type="checkbox"
+                  :checked="selectedActivityIds.includes(item.id)"
+                  @change="toggleActivity(item.id)"
+                />
+                选择
+              </label>
+            </div>
           </div>
         </div>
       </article>
@@ -295,7 +437,13 @@ onMounted(() => {
         <div v-for="r in reviews" :key="r.id" class="list-item">
           <div>
             <div class="star-row readonly">
-              <span v-for="star in ratingStars" :key="star" class="star" :class="{ active: r.rating >= star }">★</span>
+              <span
+                v-for="star in ratingStars"
+                :key="star"
+                class="star"
+                :class="{ active: r.rating >= star }"
+                >★</span
+              >
               <span class="muted">({{ r.rating }}/5)</span>
             </div>
             <p class="muted">{{ r.content }}</p>
@@ -305,6 +453,115 @@ onMounted(() => {
       </div>
     </section>
   </main>
+
+  <Teleport to="body">
+    <div v-if="showBookingModal" class="modal-backdrop" @click.self="closeBookingModal">
+      <div class="modal-card">
+        <header class="modal-header">
+          <h3>填写预订信息</h3>
+          <button class="btn" @click="closeBookingModal">关闭</button>
+        </header>
+        <div class="modal-body">
+          <div class="summary">
+            <div>
+              <strong>已选房型：</strong>
+              <span>{{ selectedRoom?.name || '-' }}</span>
+            </div>
+            <div>
+              <strong>餐饮：</strong>
+              <span>{{
+                selectedDiningItems.length
+                  ? selectedDiningItems.map((item) => item.name).join('、')
+                  : '无'
+              }}</span>
+            </div>
+            <div>
+              <strong>活动：</strong>
+              <span>{{
+                selectedActivityItems.length
+                  ? selectedActivityItems.map((item) => item.name).join('、')
+                  : '无'
+              }}</span>
+            </div>
+            <div class="summary-total">
+              <span>预估总价</span>
+              <strong>¥{{ estimatedTotal }}</strong>
+            </div>
+          </div>
+          <div class="form">
+            <label
+              >房型ID
+              <input
+                v-model="bookingForm.roomTypeId"
+                :class="{ 'input-error': formErrors.roomTypeId }"
+              />
+              <span class="field-error" v-if="formErrors.roomTypeId">{{
+                formErrors.roomTypeId
+              }}</span>
+            </label>
+            <label
+              >入住日期
+              <input
+                v-model="bookingForm.checkInDate"
+                type="date"
+                :class="{ 'input-error': formErrors.checkInDate }"
+              />
+              <span class="field-error" v-if="formErrors.checkInDate">{{
+                formErrors.checkInDate
+              }}</span>
+            </label>
+            <label
+              >退房日期
+              <input
+                v-model="bookingForm.checkOutDate"
+                type="date"
+                :class="{ 'input-error': formErrors.checkOutDate }"
+              />
+              <span class="field-error" v-if="formErrors.checkOutDate">{{
+                formErrors.checkOutDate
+              }}</span>
+            </label>
+            <label>人数 <input v-model.number="bookingForm.guests" type="number" min="1" /></label>
+            <label v-if="coupons.length">
+              可用优惠券
+              <select v-model="bookingForm.couponCode">
+                <option value="">不使用优惠券</option>
+                <option v-for="c in coupons" :key="c.code" :value="c.code">
+                  {{ c.title }}（{{ c.code }}）
+                </option>
+              </select>
+            </label>
+            <div v-else class="muted note">暂无可用优惠券</div>
+            <label
+              >联系人
+              <input
+                v-model="bookingForm.contactName"
+                :class="{ 'input-error': formErrors.contactName }"
+              />
+              <span class="field-error" v-if="formErrors.contactName">{{
+                formErrors.contactName
+              }}</span>
+            </label>
+            <label
+              >电话
+              <input
+                v-model="bookingForm.contactPhone"
+                :class="{ 'input-error': formErrors.contactPhone }"
+              />
+              <span class="field-error" v-if="formErrors.contactPhone">{{
+                formErrors.contactPhone
+              }}</span>
+            </label>
+            <label>备注 <textarea v-model="bookingForm.remarks"></textarea></label>
+          </div>
+        </div>
+        <footer class="modal-footer">
+          <button class="btn" @click="closeBookingModal">取消</button>
+          <button class="btn primary" @click="submitBooking">提交并支付</button>
+        </footer>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -393,7 +650,10 @@ strong {
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 0.8rem 1rem;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
 }
 
 .list-item.active {
@@ -416,7 +676,7 @@ strong {
 
 .form {
   display: flex;
-  flex-direction: column; 
+  flex-direction: column;
   gap: 0.6rem;
   color: #0f172a;
 }
@@ -490,6 +750,97 @@ strong {
   background: #fee2e2;
   border-color: #fecdd3;
   color: #b91c1c;
+}
+
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.summary-item.total {
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.summary-item.total strong {
+  color: #0f766e;
+  font-size: 1.1rem;
+}
+
+.chip {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.85rem;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 40;
+}
+
+.modal-card {
+  width: min(720px, 100%);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.modal-header,
+.modal-footer {
+  padding: 1rem 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-footer {
+  border-top: 1px solid #e2e8f0;
+  border-bottom: none;
+}
+
+.modal-body {
+  padding: 1rem 1.2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.summary {
+  display: grid;
+  gap: 0.5rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+}
+
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #cbd5e1;
 }
 
 .star-row {

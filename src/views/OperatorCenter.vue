@@ -1,43 +1,13 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import {
-  apiOwnerOrders,
-  apiCreateFarmstay,
-  apiCreateRoom,
-  apiCreateCoupon,
-  apiUpdateBookingStatus,
-} from '../services/api'
-import { BookingDetail } from '../types/booking'
+import { apiOwnerOrders, apiUpdateBookingStatus } from '../services/api'
+import type { BookingDetail } from '../types/booking'
 
 type Order = BookingDetail
 
 const ownerFarmStayId = ref('')
 const ownerOrders = ref<Order[]>([])
 const flash = reactive({ message: '', type: '' as 'success' | 'error' | '' })
-
-const farmstayForm = reactive({
-  name: '',
-  city: '',
-  description: '',
-  priceRange: '',
-})
-
-const roomForm = reactive({
-  farmStayId: '',
-  name: '',
-  price: '',
-  stock: '',
-})
-
-const couponForm = reactive({
-  title: '',
-  discountAmount: '',
-  minimumSpend: '',
-  validFrom: '',
-  validTo: '',
-  farmStayId: '',
-  totalCount: 10,
-})
 
 const setFlash = (message: string, type: 'success' | 'error' = 'success') => {
   flash.message = message
@@ -62,46 +32,6 @@ const loadOwnerOrders = async () => {
   }
 }
 
-const createFarmstay = async () => {
-  try {
-    await apiCreateFarmstay(farmstayForm)
-    setFlash('农家乐创建成功')
-  } catch (err) {
-    setFlash(err instanceof Error ? err.message : '创建失败', 'error')
-  }
-}
-
-const createRoom = async () => {
-  try {
-    await apiCreateRoom({
-      farmStayId: Number(roomForm.farmStayId),
-      name: roomForm.name,
-      price: Number(roomForm.price),
-      stock: Number(roomForm.stock),
-    })
-    setFlash('房型创建成功')
-  } catch (err) {
-    setFlash(err instanceof Error ? err.message : '房型创建失败', 'error')
-  }
-}
-
-const createCoupon = async () => {
-  try {
-    await apiCreateCoupon({
-      ...couponForm,
-      farmStayId: couponForm.farmStayId ? Number(couponForm.farmStayId) : undefined,
-      discountAmount: Number(couponForm.discountAmount),
-      minimumSpend: Number(couponForm.minimumSpend),
-      validFrom: couponForm.validFrom,
-      validTo: couponForm.validTo,
-      totalCount: Number(couponForm.totalCount),
-    })
-    setFlash('优惠券创建成功')
-  } catch (err) {
-    setFlash(err instanceof Error ? err.message : '优惠券创建失败', 'error')
-  }
-}
-
 const updateOrderStatus = async (orderId: number, status: string) => {
   try {
     await apiUpdateBookingStatus({ orderId, status })
@@ -118,71 +48,32 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="grid">
-    <article class="card">
-      <header class="card-header">
-        <h3>经营者订单</h3>
-        <div class="actions">
-          <input v-model="ownerFarmStayId" placeholder="农家乐ID" />
-          <button class="btn" @click="loadOwnerOrders">加载</button>
+  <section class="card">
+    <header class="card-header">
+      <h3>经营者订单</h3>
+      <div class="actions">
+        <input v-model="ownerFarmStayId" placeholder="农家乐ID" />
+        <button class="btn" @click="loadOwnerOrders">加载</button>
+      </div>
+    </header>
+    <div class="list">
+      <div v-if="!ownerOrders.length" class="muted">暂无订单</div>
+      <div v-for="o in ownerOrders" :key="o.id" class="list-item">
+        <div>
+          <strong>{{ o.orderNo }}</strong>
+          <p class="muted">状态：{{ o.status }}</p>
+          <p class="muted order-meta">
+            {{ o.farmStay?.name || '未知农家乐' }} · {{ o.farmStay?.city || '' }}
+            <br />
+            房型：{{ o.room?.name || '暂无' }} · ¥{{ o.room?.price ?? '-' }}
+          </p>
         </div>
-      </header>
-      <div class="list">
-        <div v-if="!ownerOrders.length" class="muted">暂无订单</div>
-        <div v-for="o in ownerOrders" :key="o.id" class="list-item">
-          <div>
-            <strong>{{ o.orderNo }}</strong>
-            <p class="muted">状态：{{ o.status }}</p>
-            <p class="muted order-meta">
-              {{ o.farmStay?.name || '未知农家乐' }} · {{ o.farmStay?.city || '' }}
-              <br />
-              房型：{{ o.room?.name || '暂未同步' }} · ¥{{ o.room?.price ?? '-' }}
-            </p>
-          </div>
-          <div class="list-actions">
-            <button class="btn" @click="updateOrderStatus(o.id, 'COMPLETED')">标记完成</button>
-            <button class="btn danger" @click="updateOrderStatus(o.id, 'CANCELLED')">取消</button>
-          </div>
+        <div class="list-actions">
+          <button class="btn" @click="updateOrderStatus(o.id, 'COMPLETED')">标记完成</button>
+          <button class="btn danger" @click="updateOrderStatus(o.id, 'CANCELLED')">取消</button>
         </div>
       </div>
-    </article>
-
-    <article class="card">
-      <h3>创建农家乐</h3>
-      <div class="form">
-        <label>名称<input v-model="farmstayForm.name" /></label>
-        <label>城市<input v-model="farmstayForm.city" /></label>
-        <label>描述<textarea v-model="farmstayForm.description"></textarea></label>
-        <label>价格区间<input v-model="farmstayForm.priceRange" /></label>
-        <button class="btn primary" @click="createFarmstay">创建</button>
-      </div>
-    </article>
-  </section>
-
-  <section class="grid">
-    <article class="card">
-      <h3>创建房型</h3>
-      <div class="form">
-        <label>农家乐ID<input v-model="roomForm.farmStayId" /></label>
-        <label>名称<input v-model="roomForm.name" /></label>
-        <label>价格<input v-model="roomForm.price" type="number" /></label>
-        <label>库存<input v-model="roomForm.stock" type="number" /></label>
-        <button class="btn primary" @click="createRoom">保存</button>
-      </div>
-    </article>
-    <article class="card">
-      <h3>创建优惠券</h3>
-      <div class="form">
-        <label>标题<input v-model="couponForm.title" /></label>
-        <label>金额<input v-model="couponForm.discountAmount" type="number" /></label>
-        <label>门槛<input v-model="couponForm.minimumSpend" type="number" /></label>
-        <label>有效期起<input v-model="couponForm.validFrom" type="datetime-local" /></label>
-        <label>有效期止<input v-model="couponForm.validTo" type="datetime-local" /></label>
-        <label>农家乐ID（可空）<input v-model="couponForm.farmStayId" /></label>
-        <label>数量<input v-model="couponForm.totalCount" type="number" /></label>
-        <button class="btn primary" @click="createCoupon">发券</button>
-      </div>
-    </article>
+    </div>
   </section>
 
   <section v-if="flash.message" class="status" :class="flash.type">
@@ -234,6 +125,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
+  margin-top: 1rem;
 }
 
 .list-item {
@@ -257,37 +149,16 @@ onMounted(() => {
   margin-top: 0.2rem;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1rem;
-}
-
-.form {
+.actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.5rem;
+  align-items: center;
 }
 
-.form label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.95rem;
-}
-
-.form input,
-.form textarea,
-.form select {
+.actions input {
   border: 1px solid #cbd5e1;
   border-radius: 10px;
   padding: 0.55rem 0.75rem;
-}
-
-.form.inline {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.8rem;
 }
 
 .status {

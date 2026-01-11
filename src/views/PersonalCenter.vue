@@ -1,13 +1,55 @@
 ﻿<script setup lang="ts">
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthState, clearAuthPayload } from '../composables/auth'
 import VisitorCenter from './VisitorCenter.vue'
 import OperatorCenter from './OperatorCenter.vue'
+import OperatorFarmstay from './OperatorFarmstay.vue'
+
+type TabKey = 'orders' | 'farmstay'
 
 const router = useRouter()
+const route = useRoute()
 const { payload, isAuthenticated, sync } = useAuthState()
 const loginType = computed(() => payload.value?.loginType ?? '')
+const activeTab = ref<TabKey>('orders')
+
+const menuItems = computed(() => {
+  const base = [{ key: 'orders', label: '我的订单' }]
+  if (loginType.value === 'operator') {
+    base.push({ key: 'farmstay', label: '我的农家乐' })
+  }
+  return base
+})
+
+const setTab = (tab: TabKey) => {
+  activeTab.value = tab
+  const nextQuery = { ...route.query }
+  if (tab === 'orders') {
+    delete nextQuery.tab
+  } else {
+    nextQuery.tab = tab
+  }
+  router.replace({ name: 'personal', query: nextQuery })
+}
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (tab === 'farmstay' && loginType.value === 'operator') {
+      activeTab.value = 'farmstay'
+    } else {
+      activeTab.value = 'orders'
+    }
+  },
+  { immediate: true },
+)
+
+watch(loginType, (value) => {
+  if (value !== 'operator' && activeTab.value === 'farmstay') {
+    activeTab.value = 'orders'
+  }
+})
 
 const logout = () => {
   clearAuthPayload()
@@ -59,11 +101,25 @@ const logout = () => {
     </section>
 
     <section v-else class="content-card">
-      <VisitorCenter v-if="loginType === 'visitor'" />
-      <OperatorCenter v-else-if="loginType === 'operator'" />
-      <section v-else class="status error">
-        当前角色未知，请重新登录。
-      </section>
+      <div class="content-layout">
+        <aside class="side-menu">
+          <button
+            v-for="item in menuItems"
+            :key="item.key"
+            class="menu-item"
+            :class="{ active: activeTab === item.key }"
+            @click="setTab(item.key as TabKey)"
+          >
+            {{ item.label }}
+          </button>
+        </aside>
+        <div class="content-panel">
+          <VisitorCenter v-if="loginType === 'visitor' && activeTab === 'orders'" />
+          <OperatorCenter v-else-if="loginType === 'operator' && activeTab === 'orders'" />
+          <OperatorFarmstay v-else-if="loginType === 'operator' && activeTab === 'farmstay'" />
+          <section v-else class="status error">当前角色未知，请重新登录。</section>
+        </div>
+      </div>
     </section>
   </main>
 </template>
@@ -215,15 +271,6 @@ const logout = () => {
   line-height: 1;
 }
 
-.pill {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #ecfeff;
-  color: #0ea5e9;
-  margin-bottom: 6px;
-}
-
 .muted {
   color: #111827;
 }
@@ -267,6 +314,50 @@ strong {
   background: transparent;
 }
 
+.content-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.side-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: #fff;
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 118, 110, 0.08);
+  height: fit-content;
+}
+
+.menu-item {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  background: #f8fafc;
+  cursor: pointer;
+  font-weight: 600;
+  color: #0f172a;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.menu-item.active {
+  background: #0f766e;
+  color: #fff;
+  border-color: #0f766e;
+}
+
+.menu-item:hover {
+  border-color: #0f766e;
+}
+
+.content-panel {
+  min-width: 0;
+}
+
 .status {
   margin-top: 0.5rem;
   padding: 0.8rem 1rem;
@@ -280,6 +371,17 @@ strong {
   background: #fee2e2;
   border-color: #fecdd3;
   color: #b91c1c;
+}
+
+@media (max-width: 960px) {
+  .content-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .side-menu {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
 }
 
 @media (max-width: 720px) {

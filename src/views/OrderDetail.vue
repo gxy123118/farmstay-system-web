@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiMyOrders, apiRefundBooking } from '../services/api'
@@ -34,6 +34,8 @@ const reviewLabel = computed(() => (order.value?.reviewed ? '查看评价' : '�
 const canRefund = computed(() => order.value?.status === 'PAID')
 const canPay = computed(() => order.value?.status === 'CREATED')
 const refundLabel = computed(() => (order.value?.status === 'REFUNDED' ? '退款成功' : '申请退款'))
+const diningItems = computed(() => order.value?.diningItems ?? [])
+const activityItems = computed(() => order.value?.activityItems ?? [])
 
 const goReview = () => {
   if (!order.value) return
@@ -82,7 +84,7 @@ onMounted(() => {
             <h3>入住信息</h3>
             <p>入住：{{ order.checkInDate?.slice(0, 10) }}</p>
             <p>离店：{{ order.checkOutDate?.slice(0, 10) }}</p>
-            <p>金额：¥{{ order.totalAmount ?? '-' }}</p>
+            <p>订单总额：¥{{ order.totalAmount ?? '-' }}</p>
           </div>
           <div class="detail-block">
             <h3>农家乐与房型</h3>
@@ -90,6 +92,35 @@ onMounted(() => {
             <p>城市：{{ order.farmStay?.city || '-' }}</p>
             <p>房型：{{ order.room?.name || '暂无房型' }}</p>
             <p>房价：¥{{ order.room?.price ?? '-' }}</p>
+          </div>
+          <div class="detail-block">
+            <h3>费用明细</h3>
+            <p>餐饮金额：¥{{ order.diningAmount ?? 0 }}</p>
+            <p>活动金额：¥{{ order.activityAmount ?? 0 }}</p>
+            <p>总计：¥{{ order.totalAmount ?? '-' }}</p>
+          </div>
+          <div class="detail-block">
+            <h3>服务明细</h3>
+            <div class="service-section">
+              <strong>餐饮</strong>
+              <div v-if="diningItems.length" class="service-list">
+                <div v-for="item in diningItems" :key="item.id" class="service-item">
+                  <span>{{ item.itemName || '餐饮' }} × {{ item.quantity ?? 1 }}</span>
+                  <span>¥{{ item.price ?? '-' }}</span>
+                </div>
+              </div>
+              <p v-else class="muted">无</p>
+            </div>
+            <div class="service-section">
+              <strong>活动</strong>
+              <div v-if="activityItems.length" class="service-list">
+                <div v-for="item in activityItems" :key="item.id" class="service-item">
+                  <span>{{ item.itemName || '活动' }} × {{ item.quantity ?? 1 }}</span>
+                  <span>¥{{ item.price ?? '-' }}</span>
+                </div>
+              </div>
+              <p v-else class="muted">无</p>
+            </div>
           </div>
         </div>
         <div class="actions">
@@ -159,6 +190,26 @@ onMounted(() => {
 .detail-block h3 {
   margin: 0 0 0.6rem;
   font-size: 1rem;
+}
+
+.service-section {
+  margin-bottom: 0.6rem;
+}
+
+.service-list {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.service-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  background: #fff;
 }
 
 .status {

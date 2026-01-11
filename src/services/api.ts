@@ -1,10 +1,10 @@
-import { readAuthPayload, AUTH_STORAGE_KEY, clearAuthPayload } from '../composables/auth'
+﻿import { readAuthPayload, AUTH_STORAGE_KEY, clearAuthPayload } from '../composables/auth'
 
 export const LOGIN_REDIRECT_KEY = 'farmstay-redirect'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 
-type HttpMethod = 'GET' | 'POST' | 'PUT'
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
 type ApiResponse<T> = {
   code: number
@@ -46,7 +46,7 @@ const request = async <T = unknown>(
         } catch {
           // ignore storage error
         }
-        if (window.confirm('登录已失效，请重新登录')) {
+        if (window.confirm('登录已失效，请重新登录？')) {
           window.location.assign('/login')
         }
       }
@@ -100,6 +100,8 @@ export const apiCreateFarmstay = (payload: Record<string, unknown>) =>
   request('/api/farmstays', 'POST', payload)
 export const apiUpdateFarmstay = (id: number, payload: Record<string, unknown>) =>
   request(`/api/farmstays/${id}`, 'PUT', payload)
+export const apiDeleteFarmstay = (id: number) => request(`/api/farmstays/${id}`, 'DELETE')
+export const apiOwnerFarmstays = () => request('/api/farmstays/owner')
 
 export const apiListRooms = (farmStayId: number) =>
   request(`/api/rooms?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
@@ -107,13 +109,17 @@ export const apiCreateRoom = (payload: Record<string, unknown>) => request('/api
 export const apiUpdateRoom = (id: number, payload: Record<string, unknown>) =>
   request(`/api/rooms/${id}`, 'PUT', payload)
 
+export const apiListDining = (farmStayId: number) =>
+  request(`/api/dinings?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
+
+export const apiListActivities = (farmStayId: number) =>
+  request(`/api/activities?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
+
 export const apiCreateBooking = (payload: Record<string, unknown>) =>
   request('/api/bookings', 'POST', payload)
 export const apiPayBooking = (payload: Record<string, unknown>) => request('/api/bookings/pay', 'POST', payload)
-export const apiCancelBooking = (orderId: number) =>
-  request(`/api/bookings/${orderId}/cancel`, 'POST')
-export const apiRefundBooking = (orderId: number) =>
-  request(`/api/bookings/${orderId}/refund`, 'POST')
+export const apiCancelBooking = (orderId: number) => request(`/api/bookings/${orderId}/cancel`, 'POST')
+export const apiRefundBooking = (orderId: number) => request(`/api/bookings/${orderId}/refund`, 'POST')
 export const apiUpdateBookingStatus = (payload: Record<string, unknown>) =>
   request('/api/bookings/status', 'PUT', payload)
 export const apiMyOrders = () => request('/api/bookings/mine')

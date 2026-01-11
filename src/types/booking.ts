@@ -1,4 +1,4 @@
-export type FarmStaySummary = {
+﻿export type FarmStaySummary = {
   id: number
   name?: string
   city?: string
@@ -19,6 +19,24 @@ export type RoomSummary = {
   tags?: string
 }
 
+export type DiningOrderItem = {
+  id: number
+  orderId?: number
+  diningItemId?: number
+  itemName?: string
+  price?: number
+  quantity?: number
+}
+
+export type ActivityOrderItem = {
+  id: number
+  orderId?: number
+  activityItemId?: number
+  itemName?: string
+  price?: number
+  quantity?: number
+}
+
 export type BookingDetail = {
   id: number
   orderNo: string
@@ -26,6 +44,10 @@ export type BookingDetail = {
   checkInDate?: string
   checkOutDate?: string
   totalAmount?: number
+  diningAmount?: number
+  activityAmount?: number
+  diningItems?: DiningOrderItem[]
+  activityItems?: ActivityOrderItem[]
   farmStayId?: number
   farmStay?: FarmStaySummary
   room?: RoomSummary
