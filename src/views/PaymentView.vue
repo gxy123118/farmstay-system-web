@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiMyOrders, apiPayBooking } from '../services/api'
-import type { BookingDetail } from '../types/booking'
+import type { BookingDetail, BookingPaymentResponse } from '../types/booking'
 
 type Order = BookingDetail
 
@@ -12,16 +12,32 @@ const order = ref<Order | null>(null)
 const loading = ref(false)
 const error = ref('')
 const paying = ref(false)
+const successTip = ref('')
+const currentBalance = ref<number | null>(null)
+
+const isPaid = computed(() => order.value?.status === 'PAID')
+const canPay = computed(() => order.value?.status === 'CREATED')
+const paymentChannelLabel = computed(() => {
+  if (!order.value?.paymentChannel || order.value.paymentChannel === 'UNPAID') {
+    return '待支付'
+  }
+  if (order.value.paymentChannel === 'BALANCE') {
+    return '余额支付'
+  }
+  return order.value.paymentChannel
+})
 
 const loadOrder = async () => {
   loading.value = true
   error.value = ''
+
   try {
     const id = Number(route.params.orderId)
     const list = (await apiMyOrders()) as Order[]
     order.value = list.find((o) => o.id === id) || null
     if (!order.value) {
       error.value = '未找到订单'
+      return
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '加载订单失败'
@@ -31,14 +47,19 @@ const loadOrder = async () => {
 }
 
 const pay = async () => {
-  if (!order.value) return
+  if (!order.value || !canPay.value) return
   paying.value = true
   error.value = ''
+  successTip.value = ''
+
   try {
-    await apiPayBooking({ orderId: order.value.id, channel: 'mock' })
+    const result = (await apiPayBooking({
+      orderId: order.value.id,
+      channel: 'BALANCE',
+    })) as BookingPaymentResponse
     await loadOrder()
-    alert('支付成功')
-    router.push('/personal')
+    currentBalance.value = result.currentBalance ?? null
+    successTip.value = result.payInfo || '余额支付成功'
   } catch (err) {
     error.value = err instanceof Error ? err.message : '支付失败'
   } finally {
@@ -46,28 +67,33 @@ const pay = async () => {
   }
 }
 
-onMounted(() => {
-  loadOrder()
-})
+onMounted(loadOrder)
 </script>
 
 <template>
-  <main class="pay-page">
-    <section class="card">
-      <h2>订单支付</h2>
+  <main class="page-shell pay-shell">
+    <section class="surface-strong panel">
+      <h1 class="section-title">订单支付</h1>
+
       <div v-if="loading" class="status">加载中...</div>
       <div v-else-if="error" class="status error">{{ error }}</div>
-      <div v-else-if="order">
+      <div v-else-if="order" class="detail">
         <p>订单号：{{ order.orderNo }}</p>
         <p>金额：¥{{ order.totalAmount ?? '-' }}</p>
         <p>状态：{{ order.status }}</p>
-        <p class="muted order-meta">农家乐：{{ order.farmStay?.name || '暂无信息' }} · {{ order.farmStay?.city || '-' }}</p>
-        <p class="muted order-meta">房型：{{ order.room?.name || '暂无房型' }} · ¥{{ order.room?.price ?? '-' }}</p>
+        <p>支付方式：{{ paymentChannelLabel }}</p>
+        <p class="muted">当前阶段只支持余额支付。</p>
+        <p class="muted">农家乐：{{ order.farmStay?.name || '暂无信息' }} · {{ order.farmStay?.city || '-' }}</p>
+        <p class="muted">房型：{{ order.room?.name || '暂无房型' }} · ¥{{ order.room?.price ?? '-' }}</p>
+        <p v-if="successTip" class="status success">{{ successTip }}</p>
+        <p v-if="currentBalance !== null" class="muted">支付后余额：¥{{ currentBalance }}</p>
+
         <div class="actions">
-          <button class="btn primary" :disabled="paying || order.status === 'PAID'" @click="pay">
-            {{ order.status === 'PAID' ? '已支付' : paying ? '支付中...' : '去支付' }}
+          <button class="btn btn-primary" :disabled="paying || !canPay" @click="pay">
+            {{ isPaid ? '已支付' : paying ? '支付中...' : '余额支付' }}
           </button>
-          <button class="btn" @click="$router.push('/personal')">返回个人中心</button>
+          <button class="btn btn-secondary" @click="router.push(`/orders/${order.id}`)">查看订单</button>
+          <button class="btn btn-secondary" @click="router.push('/personal')">返回个人中心</button>
         </div>
       </div>
     </section>
@@ -75,61 +101,31 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.pay-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  background: #f1f5f9;
+.pay-shell {
+  display: grid;
+  place-items: center;
 }
 
-.card {
-  background: #fff;
-  border-radius: 16px;
-  padding: 1.4rem;
-  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.08);
-  min-width: 320px;
-  color: #0f172a;
+.panel {
+  width: min(560px, 100%);
+  padding: 20px;
+  display: grid;
+  gap: 12px;
 }
 
-.status {
-  padding: 0.8rem 1rem;
-  border-radius: 10px;
-  background: #ecfeff;
-  border: 1px solid #bae6fd;
-  color: #0f172a;
+.detail {
+  display: grid;
+  gap: 6px;
 }
 
-.status.error {
-  background: #fee2e2;
-  border-color: #fecdd3;
-  color: #b91c1c;
-}
-
-.order-meta {
-  font-size: 0.85rem;
-  color: #475569;
-  margin-bottom: 0.25rem;
+.success {
+  color: #1f7a45;
 }
 
 .actions {
+  margin-top: 8px;
   display: flex;
-  gap: 0.6rem;
-  margin-top: 1rem;
-}
-
-.btn {
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0.6rem 1rem;
-  cursor: pointer;
-  background: #f8fafc;
-}
-
-.btn.primary {
-  background: #0f766e;
-  color: #fff;
-  border-color: #0f766e;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 </style>

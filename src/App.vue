@@ -1,16 +1,7 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { RouterView } from 'vue-router'
 </script>
 
 <template>
-  <div class="app-root">
-    <RouterView />
-  </div>
+  <RouterView />
 </template>
-
-<style scoped>
-.app-root {
-  min-height: 100vh;
-  background: #eef2ff;
-}
-</style>

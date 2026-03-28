@@ -40,16 +40,58 @@ export type ActivityOrderItem = {
 export type BookingDetail = {
   id: number
   orderNo: string
+  visitorId?: number
+  visitorUsername?: string
+  visitorName?: string
   status: string
+  paymentChannel?: string
   checkInDate?: string
   checkOutDate?: string
   totalAmount?: number
   diningAmount?: number
   activityAmount?: number
+  contactName?: string
+  contactPhone?: string
+  guests?: number
+  couponCode?: string
+  remarks?: string
   diningItems?: DiningOrderItem[]
   activityItems?: ActivityOrderItem[]
   farmStayId?: number
   farmStay?: FarmStaySummary
   room?: RoomSummary
   reviewed?: boolean
+}
+
+export type BookingCreatePayload = {
+  farmStayId: number
+  roomTypeId: number
+  checkInDate: string
+  checkOutDate: string
+  guests: number
+  diningItemIds?: number[]
+  activityItemIds?: number[]
+  couponCode?: string
+  contactName: string
+  contactPhone: string
+  remarks?: string
+}
+
+export type BookingCreateResponse = {
+  id: number
+  orderNo: string
+  status: string
+  paymentChannel?: string
+  totalAmount?: number
+}
+
+export type BookingPaymentPayload = {
+  orderId: number
+  channel: 'BALANCE'
+}
+
+export type BookingPaymentResponse = {
+  payInfo?: string
+  status: string
+  currentBalance?: number
 }

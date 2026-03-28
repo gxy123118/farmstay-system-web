@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiCreateReview, apiGetReviewByOrder, apiListReviews, apiMyOrders, apiUpdateReview } from '../services/api'
@@ -20,12 +20,14 @@ type Review = {
 const route = useRoute()
 const router = useRouter()
 const { payload } = useAuthState()
+
 const order = ref<Order | null>(null)
 const review = ref<Review | null>(null)
 const reviewList = ref<Review[]>([])
 const loading = ref(false)
 const error = ref('')
 const submitting = ref(false)
+const hoverRating = ref(0)
 
 const ratingStars = [1, 2, 3, 4, 5]
 const reviewForm = reactive({
@@ -35,15 +37,22 @@ const reviewForm = reactive({
 
 const canReview = computed(() => order.value?.status === 'PAID' && !review.value)
 const canEditReview = computed(() => typeof payload.value?.userId === 'number')
+const displayRating = computed(() => hoverRating.value || reviewForm.rating)
+const reviewButtonLabel = computed(() => (review.value ? '更新评价' : '提交评价'))
+const pageTitle = computed(() => (review.value ? '修改这次旅途的评价' : '写下这次旅途的评价'))
+
+const formatDate = (value?: string | null) => (value ? value.slice(0, 10) : '-')
 
 const loadData = async () => {
   loading.value = true
   error.value = ''
+
   try {
     const id = Number(route.params.orderId)
     const list = (await apiMyOrders()) as Order[]
-    order.value = list.find((o) => o.id === id) || null
+    order.value = list.find((item) => item.id === id) || null
     review.value = (await apiGetReviewByOrder(id)) as Review | null
+
     if (review.value) {
       reviewForm.rating = review.value.rating
       reviewForm.content = review.value.content
@@ -51,12 +60,9 @@ const loadData = async () => {
       reviewForm.rating = 5
       reviewForm.content = ''
     }
+
     const farmStayId = order.value?.farmStay?.id || order.value?.farmStayId
-    if (farmStayId) {
-      reviewList.value = (await apiListReviews(farmStayId)) as Review[]
-    } else {
-      reviewList.value = []
-    }
+    reviewList.value = farmStayId ? ((await apiListReviews(farmStayId)) as Review[]) : []
   } catch (err) {
     error.value = err instanceof Error ? err.message : '加载评价失败'
   } finally {
@@ -69,11 +75,11 @@ const setRating = (value: number) => {
 }
 
 const submitReview = async () => {
-  if (!order.value || !canReview.value) {
-    return
-  }
+  if (!order.value || !canReview.value) return
+
   submitting.value = true
   error.value = ''
+
   try {
     await apiCreateReview({
       orderId: order.value.id,
@@ -91,8 +97,10 @@ const submitReview = async () => {
 
 const updateReview = async () => {
   if (!order.value || !review.value) return
+
   submitting.value = true
   error.value = ''
+
   try {
     await apiUpdateReview(review.value.orderId, {
       orderId: review.value.orderId,
@@ -108,214 +116,464 @@ const updateReview = async () => {
   }
 }
 
-onMounted(() => {
-  loadData()
-})
+onMounted(loadData)
 </script>
 
 <template>
-  <main class="review-page">
-    <section class="card">
+  <main class="page-shell review-page">
+    <section class="surface-strong review-stage">
       <div v-if="loading" class="status">加载中...</div>
       <div v-else-if="error" class="status error">{{ error }}</div>
-      <div v-else-if="order">
-        <p class="muted">农家乐：{{ order.farmStay?.name || '暂无信息' }}</p>
-        <p class="muted">房型：{{ order.room?.name || '暂无房型' }}</p>
 
-        <div class="review-section">
-          <div class="review-form">
-            <h3>{{ review ? '已提交评价' : '填写评价' }}</h3>
-            <div class="star-row" :class="{ readonly: order.status !== 'PAID' }">
-              <span
+      <template v-else-if="order">
+        <header class="review-hero">
+          <div class="hero-copy">
+            <p class="eyebrow">Guest Notes</p>
+            <h1 class="section-title">{{ pageTitle }}</h1>
+            <p class="hero-subtitle">
+              {{ order.farmStay?.name || '目的地待确认' }} · {{ order.room?.name || '房型待确认' }} · 入住 {{ formatDate(order.checkInDate) }}
+            </p>
+
+            <div class="hero-order-meta">
+              <span>订单编号</span>
+              <code>{{ order.orderNo || order.id }}</code>
+            </div>
+          </div>
+
+          <div class="hero-side">
+            <div class="hero-state">
+              <span>订单状态</span>
+              <strong>{{ order.status === 'PAID' ? '已支付，可继续评价' : '未支付，当前不可提交' }}</strong>
+            </div>
+            <div class="hero-side-meta">
+              <span>本次评分</span>
+              <strong>{{ reviewForm.rating }} / 5</strong>
+            </div>
+          </div>
+        </header>
+
+        <section class="review-layout">
+          <article class="review-editor">
+            <div class="editor-head">
+              <div>
+                <p class="card-kicker">Your Voice</p>
+                <h2>{{ review ? '编辑评价' : '评价这次住宿' }}</h2>
+              </div>
+              <span class="rating-badge">{{ reviewForm.rating }} / 5</span>
+            </div>
+
+            <div class="rating-stage" :class="{ locked: order.status !== 'PAID' }">
+              <button
                 v-for="star in ratingStars"
                 :key="star"
-                class="star"
-                :class="{ active: reviewForm.rating >= star }"
-                @click="order.status === 'PAID' ? setRating(star) : undefined"
+                type="button"
+                class="star-tile"
+                :class="{ active: displayRating >= star }"
+                :disabled="order.status !== 'PAID'"
+                @mouseenter="hoverRating = star"
+                @mouseleave="hoverRating = 0"
+                @click="setRating(star)"
               >
-                ★
-              </span>
-              <span class="muted">({{ reviewForm.rating }}/5)</span>
-            </div>
-            <textarea v-model="reviewForm.content" placeholder="写下你的入住体验"></textarea>
-            <div class="form-actions">
-              <button
-                v-if="!review"
-                class="btn primary"
-                :disabled="submitting || !canReview"
-                @click="submitReview"
-              >
-                {{ submitting ? '提交中...' : '提交评价' }}
-              </button>
-              <button
-                v-else
-                class="btn primary"
-                :disabled="submitting || !canEditReview || review?.orderId !== order.id"
-                @click="updateReview"
-              >
-                {{ submitting ? '提交中...' : '更新评价' }}
+                <span class="star-mark">★</span>
+                <small>{{ ['很差', '较差', '一般', '满意', '强烈推荐'][star - 1] }}</small>
               </button>
             </div>
-            <p v-if="order.status !== 'PAID'" class="muted">订单未支付，无法评价</p>
-          </div>
-          <div class="review-list">
-            <div v-if="!reviewList.length" class="muted">暂无评价</div>
-            <div v-for="item in reviewList" :key="item.id" class="review-item">
-              <div class="review-head">
-                <strong>{{ item.visitorName || '游客' }}</strong>
-                <span class="muted">{{ item.createdAt?.slice(0, 10) }}</span>
-              </div>
-              <div class="star-row readonly">
-                <span v-for="star in ratingStars" :key="star" class="star" :class="{ active: item.rating >= star }">
-                  ★
-                </span>
-                <span class="muted">({{ item.rating }}/5)</span>
-              </div>
-              <p class="muted">{{ item.content }}</p>
-            </div>
-          </div>
-        </div>
 
-        <div class="actions">
-          <button class="btn" @click="router.push({ name: 'personal', query: { orderId: String(order.id), from: 'review' } })">
-            返回个人中心
-          </button>
-        </div>
-      </div>
+            <label class="field review-field">
+              <span>入住印象</span>
+              <textarea
+                v-model="reviewForm.content"
+                class="textarea review-textarea"
+                placeholder="写下房间、环境、服务、餐饮或活动体验，让评价真正有信息量。"
+              />
+            </label>
+
+            <div class="editor-actions">
+              <button
+                class="btn btn-primary action-btn"
+                :disabled="submitting || (!review ? !canReview : !canEditReview || review?.orderId !== order.id)"
+                @click="review ? updateReview() : submitReview()"
+              >
+                {{ submitting ? '提交中...' : reviewButtonLabel }}
+              </button>
+              <button
+                class="btn btn-secondary action-btn"
+                @click="router.push({ name: 'personal', query: { orderId: String(order.id), from: 'review' } })"
+              >
+                返回个人中心
+              </button>
+            </div>
+
+            <p v-if="order.status !== 'PAID'" class="editor-tip">当前订单未支付，评分区保留只读展示，提交按钮不可用。</p>
+          </article>
+
+          <aside class="review-sidebar">
+            <article class="side-card">
+              <p class="card-kicker">Guide</p>
+              <h2>评价指引</h2>
+              <ul class="guide-list">
+                <li>房间是否整洁、安静，和预期是否一致。</li>
+                <li>餐饮、活动是否值得加购，是否有明确亮点。</li>
+                <li>适合什么样的游客，避开什么常见误解。</li>
+              </ul>
+            </article>
+
+            <article class="side-card">
+              <p class="card-kicker">Guest Feed</p>
+              <h2>同住客评价</h2>
+
+              <p v-if="!reviewList.length" class="muted">当前还没有可参考的评价。</p>
+              <div v-else class="review-feed">
+                <article v-for="item in reviewList" :key="item.id" class="feed-item">
+                  <header>
+                    <div>
+                      <strong>{{ item.visitorName || '游客' }}</strong>
+                      <span>{{ formatDate(item.createdAt) }}</span>
+                    </div>
+                    <em>{{ item.rating }} / 5</em>
+                  </header>
+                  <div class="mini-stars">
+                    <span v-for="star in ratingStars" :key="star" :class="{ active: item.rating >= star }">★</span>
+                  </div>
+                  <p>{{ item.content }}</p>
+                </article>
+              </div>
+            </article>
+          </aside>
+        </section>
+      </template>
     </section>
   </main>
 </template>
 
 <style scoped>
 .review-page {
-  min-height: 100vh;
-  padding: 2rem;
-  background: #f1f5f9;
+  padding-top: 30px;
 }
 
-.card {
-  background: #fff;
-  border-radius: 16px;
-  padding: 1.6rem 2rem;
-  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.08);
-  width: 100%;
-  min-height: calc(100vh - 4rem);
-  color: #0f172a;
-}
-
-.status {
-  padding: 0.8rem 1rem;
-  border-radius: 10px;
-  background: #ecfeff;
-  border: 1px solid #bae6fd;
-  color: #0f172a;
-}
-
-.status.error {
-  background: #fee2e2;
-  border-color: #fecdd3;
-  color: #b91c1c;
-}
-
-.review-section {
+.review-stage {
+  padding: 28px;
   display: grid;
-  grid-template-columns: minmax(260px, 360px) 1fr;
-  gap: 1.5rem;
-  margin-top: 1rem;
+  gap: 18px;
+  background:
+    radial-gradient(520px 260px at 0% 0%, rgba(193, 119, 46, 0.1), transparent 72%),
+    radial-gradient(420px 220px at 100% 0%, rgba(47, 106, 73, 0.08), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 246, 239, 0.96));
 }
 
-.review-form,
-.review-list {
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 1rem;
-  background: #f8fafc;
+.review-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 20px;
+  padding: 24px;
+  border-radius: 28px;
+  border: 1px solid rgba(47, 67, 54, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 42px rgba(34, 49, 37, 0.08);
 }
 
-.review-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
+.eyebrow,
+.card-kicker {
+  color: var(--brand-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
-.review-item {
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 0.8rem;
+.eyebrow {
+  margin-bottom: 10px;
 }
 
-.review-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+.hero-copy h1 {
+  font-size: clamp(30px, 4vw, 42px);
+  line-height: 1.02;
 }
 
-.review-head {
+.hero-subtitle {
+  margin-top: 12px;
+  color: var(--ink-soft);
+  line-height: 1.8;
+}
+
+.hero-order-meta {
+  margin-top: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.hero-order-meta span,
+.hero-state span,
+.hero-side-meta span {
+  color: var(--ink-soft);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hero-order-meta code {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px dashed rgba(47, 67, 54, 0.18);
+  background: rgba(250, 248, 240, 0.95);
+  color: var(--ink-strong);
+  font-family: 'Consolas', 'SFMono-Regular', monospace;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.hero-side {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.hero-state,
+.hero-side-meta {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  text-align: right;
+}
+
+.hero-state strong {
+  color: var(--ink-strong);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.hero-side-meta strong {
+  color: var(--brand);
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) 360px;
+  gap: 16px;
+}
+
+.review-editor,
+.side-card {
+  padding: 22px;
+  border-radius: 26px;
+  border: 1px solid rgba(47, 67, 54, 0.12);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 14px 34px rgba(34, 49, 37, 0.06);
+}
+
+.review-editor {
+  display: grid;
+  gap: 20px;
+}
+
+.editor-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.4rem;
+  gap: 12px;
+  align-items: start;
 }
 
-.star-row {
+.editor-head h2,
+.side-card h2 {
+  margin-top: 6px;
+  font-family: var(--font-display);
+  color: var(--ink-strong);
+  font-size: 28px;
+}
+
+.rating-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 0.6rem;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: rgba(193, 119, 46, 0.12);
+  color: var(--brand-2);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.star {
+.rating-stage {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rating-stage.locked {
+  opacity: 0.72;
+}
+
+.star-tile {
+  min-height: 110px;
+  border: 1px solid rgba(47, 67, 54, 0.12);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 243, 234, 0.95));
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
   cursor: pointer;
-  color: #cbd5e1;
-  font-size: 1.3rem;
-  line-height: 1;
-  transition: color 0.15s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-.star.active {
-  color: #fbbf24;
+.star-tile:hover:not(:disabled),
+.star-tile.active {
+  transform: translateY(-4px);
+  border-color: rgba(193, 119, 46, 0.3);
+  box-shadow: 0 18px 38px rgba(193, 119, 46, 0.16);
+  color: var(--brand-2);
 }
 
-.star-row.readonly .star {
+.star-tile:disabled {
   cursor: default;
 }
 
-textarea {
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  padding: 0.6rem;
-  min-height: 80px;
-  width: 100%;
+.star-mark {
+  font-size: 34px;
+  line-height: 1;
 }
 
-.btn {
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0.6rem 1rem;
-  cursor: pointer;
-  background: #f8fafc;
+.star-tile small {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.btn.primary {
-  background: #0f766e;
-  color: #fff;
-  border-color: #0f766e;
+.review-field {
+  gap: 10px;
 }
 
-.actions {
-  margin-top: 1rem;
+.review-field > span {
+  color: var(--ink-strong);
+  font-weight: 700;
 }
 
-.form-actions {
+.review-textarea {
+  min-height: 220px;
+  border-radius: 24px;
+  padding: 18px;
+  background: rgba(250, 248, 240, 0.96);
+}
+
+.editor-actions {
   display: flex;
-  gap: 0.6rem;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.muted {
-  color: #64748b;
+.action-btn {
+  min-width: 180px;
+  min-height: 50px;
+  border-radius: 18px;
+  justify-content: center;
 }
 
-@media (max-width: 900px) {
-  .review-section {
+.editor-tip,
+.guide-list,
+.feed-item p {
+  color: var(--ink-soft);
+  line-height: 1.8;
+}
+
+.review-sidebar {
+  display: grid;
+  gap: 16px;
+}
+
+.guide-list {
+  padding-left: 18px;
+}
+
+.review-feed {
+  display: grid;
+  gap: 12px;
+}
+
+.feed-item {
+  padding: 16px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(248, 246, 239, 0.96), rgba(255, 255, 255, 0.98));
+  border: 1px solid rgba(47, 67, 54, 0.08);
+  display: grid;
+  gap: 10px;
+}
+
+.feed-item header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.feed-item header div {
+  display: grid;
+  gap: 4px;
+}
+
+.feed-item strong {
+  color: var(--ink-strong);
+}
+
+.feed-item span {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.feed-item em {
+  color: var(--brand-2);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.mini-stars {
+  display: flex;
+  gap: 4px;
+  color: rgba(193, 119, 46, 0.24);
+}
+
+.mini-stars .active {
+  color: var(--brand-2);
+}
+
+@media (max-width: 1040px) {
+  .review-hero,
+  .review-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-state,
+  .hero-side-meta {
+    justify-items: start;
+    text-align: left;
+  }
+}
+
+@media (max-width: 760px) {
+  .review-page {
+    width: min(1220px, 100% - 24px);
+  }
+
+  .review-stage,
+  .review-hero,
+  .review-editor,
+  .side-card {
+    padding: 18px;
+  }
+
+  .rating-stage,
+  .hero-side {
     grid-template-columns: 1fr;
   }
 }

@@ -7,6 +7,8 @@ export interface AuthTokenPayload {
   userId?: number
   username?: string
   displayName?: string
+  status?: string
+  balance?: number
 }
 
 export const AUTH_STORAGE_KEY = 'farmstay-token'

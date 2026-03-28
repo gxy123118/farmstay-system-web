@@ -1,7 +1,7 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { apiLogin, apiRegister, LOGIN_REDIRECT_KEY } from '../services/api'
+import { apiLogin, apiRegister, LOGIN_REDIRECT_KEY, mergeAuthPayload } from '../services/api'
 import { persistAuthPayload, readAuthPayload, type AuthTokenPayload } from '../composables/auth'
 
 type TokenPayload = AuthTokenPayload
@@ -22,12 +22,7 @@ const form = reactive({
 const feedback = reactive({ message: '', type: '' as 'success' | 'error' | '' })
 const isSubmitting = ref(false)
 const mode = ref<'login' | 'register'>('login')
-
-const loadPersistedToken = (): TokenPayload | null => {
-  return readAuthPayload()
-}
-
-const tokenInfo = ref<TokenPayload | null>(loadPersistedToken())
+const tokenInfo = ref<TokenPayload | null>(readAuthPayload())
 
 const isRegisterMode = computed(() => mode.value === 'register')
 
@@ -61,8 +56,10 @@ const handleSubmit = async () => {
     setFeedback('请将所有字段填写完整', 'error')
     return
   }
+
   isSubmitting.value = true
   clearFeedback()
+
   try {
     const payload =
       mode.value === 'register'
@@ -78,20 +75,18 @@ const handleSubmit = async () => {
             userType: form.userType,
           })
 
-    const storedPayload: TokenPayload = {
-      ...payload,
-      userId: payload.userId,
-      username: form.username,
-      displayName: form.displayName || form.username,
-    }
+    const storedPayload: TokenPayload = mergeAuthPayload(payload)
+
     tokenInfo.value = storedPayload
     persistAuthPayload(storedPayload)
+
     if (isRegisterMode.value) {
-      setFeedback('注册成功，已自动登录，请确认页面右侧信息', 'success')
+      setFeedback('注册成功，已自动登录', 'success')
       mode.value = 'login'
     } else {
-      setFeedback('登录成功，令牌已准备就绪', 'success')
+      setFeedback('登录成功', 'success')
     }
+
     const redirect = localStorage.getItem(LOGIN_REDIRECT_KEY)
     if (redirect) {
       localStorage.removeItem(LOGIN_REDIRECT_KEY)
@@ -112,242 +107,191 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="login-page">
-    <section class="login-hero">
-      <p class="hero-eyebrow">游客与经营者的乡野联动</p>
-      <h1>在农家乐与管理之间切换自如</h1>
-      <p class="hero-copy">
-        覆盖游客预订与经营者后台，实时同步库存、订单与评价，帮助你快速上架并获得更多好评。
+  <main class="login-shell page-shell">
+    <section class="login-intro surface">
+      <span class="badge">农宿业务中台</span>
+      <h1 class="section-title">把乡野住宿、订单与评价放进一个清晰系统</h1>
+      <p class="muted">
+        游客可搜索、预订、支付、评价，经营者可管理农家乐、订单和服务项。
       </p>
-      <div class="hero-stats">
+      <div class="intro-stats">
         <article v-for="stat in loginHeroStats" :key="stat.label">
-          <span class="stat-value">{{ stat.value }}</span>
-          <span class="stat-label">{{ stat.label }}</span>
+          <strong>{{ stat.value }}</strong>
+          <span>{{ stat.label }}</span>
         </article>
+      </div>
+      <div v-if="tokenInfo" class="token-panel">
+        <p><strong>当前账号：</strong>{{ tokenInfo.displayName || tokenInfo.username }}</p>
+        <p><strong>角色：</strong>{{ tokenInfo.loginType }}</p>
       </div>
     </section>
 
-    <section class="login-panel">
-      <article class="login-card">
-        <header>
-          <h2>欢迎使用农家乐服务平台</h2>
-        </header>
+    <section class="login-panel surface-strong">
+      <header>
+        <h2 class="section-title">{{ isRegisterMode ? '创建账户' : '欢迎回来' }}</h2>
+        <p class="muted">{{ isRegisterMode ? '先注册，再一键进入平台' : '继续管理你的农宿业务' }}</p>
+      </header>
 
-        <form class="login-form" @submit.prevent="handleSubmit">
-          <label class="input-label">
-            <span>账号:</span>
-            <input v-model="form.username" type="text" placeholder="输入账号" autocomplete="username" />
-          </label>
+      <form class="login-form" @submit.prevent="handleSubmit">
+        <label class="field">
+          <span>账号</span>
+          <input v-model="form.username" class="input" type="text" placeholder="请输入账号" autocomplete="username" />
+        </label>
 
-          <label class="input-label">
-            <span>密码:</span>
-            <input v-model="form.password" type="password" placeholder="输入密码" autocomplete="current-password" />
-          </label>
+        <label class="field">
+          <span>密码</span>
+          <input v-model="form.password" class="input" type="password" placeholder="请输入密码" autocomplete="current-password" />
+        </label>
 
-          <label v-if="isRegisterMode" class="input-label">
-            <span>昵称:</span>
-            <input v-model="form.displayName" type="text" placeholder="展示给他人的名字" />
-          </label>
+        <label v-if="isRegisterMode" class="field">
+          <span>昵称</span>
+          <input v-model="form.displayName" class="input" type="text" placeholder="展示给其他用户的名字" />
+        </label>
 
-          <label class="input-label select-label">
-            <span>身份:</span>
-            <div class="radio-group">
-              <label>
-                <input v-model="form.userType" type="radio" value="visitor" />
-                游客
-              </label>
-              <label>
-                <input v-model="form.userType" type="radio" value="operator" />
-                经营者
-              </label>
-            </div>
-          </label>
+        <label class="field">
+          <span>身份</span>
+          <div class="role-toggle">
+            <label class="role-item">
+              <input v-model="form.userType" type="radio" value="visitor" />
+              游客
+            </label>
+            <label class="role-item">
+              <input v-model="form.userType" type="radio" value="operator" />
+              经营者
+            </label>
+          </div>
+        </label>
 
-          <button class="btn-submit" type="submit" :disabled="isSubmitting || !canSubmit">
-            <span v-if="!isSubmitting">{{ isRegisterMode ? '注册并登录' : '登录' }}</span>
-            <span v-else>通信中…</span>
-          </button>
-        </form>
-
-        <button class="mode-switch" type="button" @click="toggleMode">
-          {{ isRegisterMode ? '已有账号？切换到登录' : '需要新账号？去注册' }}
+        <button class="btn btn-primary" type="submit" :disabled="isSubmitting || !canSubmit">
+          {{ isSubmitting ? '处理中...' : isRegisterMode ? '注册并登录' : '登录' }}
         </button>
+      </form>
 
-        <div v-if="feedback.message" class="status" :class="feedback.type">
-          {{ feedback.message }}
-        </div>
-      </article>
+      <button class="switch-btn" type="button" @click="toggleMode">
+        {{ isRegisterMode ? '已有账号，去登录' : '没有账号，去注册' }}
+      </button>
+
+      <div v-if="feedback.message" class="status" :class="feedback.type === 'error' ? 'error' : ''">
+        {{ feedback.message }}
+      </div>
     </section>
-  </div>
+  </main>
 </template>
 
 <style scoped>
-.login-page {
-  min-height: 100vh;
+.login-shell {
   display: grid;
-  grid-template-columns: minmax(320px, 420px) 1fr;
-  gap: 2rem;
-  padding: 3rem;
-  background:
-    radial-gradient(circle at top, rgba(29, 140, 248, 0.25), transparent 40%),
-    radial-gradient(circle at 20% 20%, rgba(252, 211, 77, 0.3), transparent 45%), var(--color-dusk);
+  grid-template-columns: minmax(300px, 0.95fr) minmax(340px, 1fr);
+  gap: 24px;
+  align-items: stretch;
 }
 
-.login-hero {
-  border-radius: 30px;
-  padding: 3rem;
-  background: linear-gradient(135deg, #0f766e, #1d8cf83f);
-  color: #fff;
+.login-intro,
+.login-panel {
+  padding: 28px;
+}
+
+.login-intro {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  box-shadow: 0 30px 60px rgba(15, 118, 110, 0.3);
+  gap: 16px;
 }
 
-.hero-eyebrow {
-  text-transform: uppercase;
-  font-size: 0.85rem;
-  letter-spacing: 0.3em;
-  margin: 0;
-  opacity: 0.85;
+.login-intro h1 {
+  font-size: clamp(30px, 4.2vw, 44px);
+  line-height: 1.16;
 }
 
-.hero-copy {
-  line-height: 1.7;
-  max-width: 360px;
-  margin: 0;
+.intro-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.hero-stats {
+.intro-stats article {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 4px;
 }
 
-.hero-stats article {
-  display: flex;
-  flex-direction: column;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 18px;
-  padding: 1rem 1.2rem;
+.intro-stats strong {
+  color: var(--ink-strong);
+  font-size: 24px;
+  font-family: var(--font-display);
 }
 
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
+.intro-stats span {
+  color: var(--ink-soft);
+  font-size: 13px;
 }
 
-.stat-label {
-  font-size: 0.9rem;
-  opacity: 0.8;
+.token-panel {
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--line-strong);
+  padding: 12px;
+  background: rgba(248, 246, 238, 0.7);
+  color: var(--ink-soft);
+  display: grid;
+  gap: 6px;
 }
 
 .login-panel {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 16px;
   justify-content: center;
 }
 
-.login-card {
-  width: 100%;
-  max-width: 420px;
-  background: #fff;
-  border-radius: 24px;
-  padding: 3rem 2.5rem;
-  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.15);
-}
-
-.login-card header h2 {
-  margin: 0.5rem 0 1.5rem;
-  color: #0f766e;
-}
-
 .login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  display: grid;
+  gap: 12px;
 }
 
-.input-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  color: #1f2937;
+.role-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.input-label input {
-  border-radius: 12px;
-  border: 1px solid #d1d5db;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-}
-
-.select-label .radio-group {
-  flex-direction: row;
-}
-
-.radio-group {
-  display: flex;
-  gap: 1rem;
-}
-
-.radio-group label {
-  display: flex;
+.role-item {
+  display: inline-flex;
+  gap: 8px;
   align-items: center;
-  gap: 0.3rem;
-  font-weight: 500;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #fff;
+  color: var(--ink);
 }
 
-.btn-submit {
-  margin-top: 0.5rem;
-  border: none;
-  border-radius: 12px;
-  padding: 0.9rem;
-  background: #0f766e;
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.mode-switch {
-  margin-top: 1rem;
+.switch-btn {
+  border: 0;
   background: transparent;
-  border: none;
-  color: #0f766e;
+  color: var(--brand);
   font-weight: 600;
+  text-align: left;
   cursor: pointer;
 }
 
-.status {
-  margin-top: 1rem;
-  padding: 0.8rem 1rem;
-  border-radius: 10px;
-  font-size: 0.9rem;
-}
-
-.status.success {
-  background: #ecfdf5;
-  color: #065f46;
-}
-
-.status.error {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-@media (max-width: 960px) {
-  .login-page {
+@media (max-width: 980px) {
+  .login-shell {
     grid-template-columns: 1fr;
-    padding: 2rem;
+  }
+
+  .login-intro {
+    order: 2;
   }
 
   .login-panel {
     order: 1;
   }
 
-  .login-hero {
-    order: 2;
+  .intro-stats {
+    grid-template-columns: 1fr;
   }
 }
 </style>
