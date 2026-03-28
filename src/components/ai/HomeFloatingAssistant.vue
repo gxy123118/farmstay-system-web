@@ -5,7 +5,6 @@ import {
   apiAiClearSessions,
   apiAiCreateSession,
   apiAiDeleteSession,
-  apiAiFeedback,
   apiAiListMessages,
   apiAiListSessions,
   apiAiStreamMessage,
@@ -36,7 +35,6 @@ const streamingCitations = ref<AiCitation[]>([])
 const streamingMessageId = ref<number | null>(null)
 const error = ref('')
 const actionBusy = ref(false)
-const feedbackState = reactive<Record<number, 'up' | 'down'>>({})
 const dialogueRef = ref<HTMLElement | null>(null)
 const position = reactive({
   x: 24,
@@ -509,22 +507,6 @@ const submitQuestion = async () => {
   }
 }
 
-const sendFeedback = async (messageId: number, useful: boolean) => {
-  if (!session.value) {
-    return
-  }
-  try {
-    await apiAiFeedback({
-      sessionId: session.value.sessionId,
-      messageId,
-      useful,
-    })
-    feedbackState[messageId] = useful ? 'up' : 'down'
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '反馈提交失败'
-  }
-}
-
 watch(
   () => [props.farmStayId, currentScene.value],
   () => {
@@ -655,22 +637,6 @@ onBeforeUnmount(() => {
                   </div>
                   <p v-if="message.refuseReason" class="muted">拒答原因：{{ message.refuseReason }}</p>
                   <p v-if="message.fallback" class="muted">当前回答为降级结果</p>
-                  <div v-if="message.role === 'assistant'" class="feedback-actions">
-                    <button
-                      class="mini-btn"
-                      :class="{ active: feedbackState[message.messageId] === 'up' }"
-                      @click="sendFeedback(message.messageId, true)"
-                    >
-                      有帮助
-                    </button>
-                    <button
-                      class="mini-btn"
-                      :class="{ active: feedbackState[message.messageId] === 'down' }"
-                      @click="sendFeedback(message.messageId, false)"
-                    >
-                      再具体点
-                    </button>
-                  </div>
                 </article>
               </div>
 
@@ -1024,12 +990,6 @@ onBeforeUnmount(() => {
   padding: 4px 8px;
   border-radius: 999px;
   background: rgba(47, 106, 73, 0.08);
-}
-
-.feedback-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .mini-btn {

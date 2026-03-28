@@ -13,6 +13,15 @@ import type {
   RechargeCreatePayload,
   RechargeResponse,
 } from '../types/account'
+import type {
+  AdminCitation,
+  AdminDashboardOverview,
+  AdminKnowledgeDocument,
+  AdminKnowledgePayload,
+  AdminReview,
+  AdminUser,
+  PageResponse,
+} from '../types/admin'
 
 export const LOGIN_REDIRECT_KEY = 'farmstay-redirect'
 
@@ -369,7 +378,6 @@ export const apiOperatorInsightIssues = (farmStayId: number) =>
 
 export const apiKnowledgeList = (params?: {
   keyword?: string
-  docType?: string
   scope?: string
   status?: string
   farmStayId?: number
@@ -393,10 +401,8 @@ export const apiKnowledgeCreate = (payload: {
   content: string
   summary?: string
   keywords?: string
-  docType?: string
   scope?: string
   farmStayId?: number | null
-  priority?: number
   status?: string
 }) => request('/api/ai/knowledge', 'POST', payload)
 
@@ -411,10 +417,8 @@ export const apiKnowledgeBatchUpsert = (payload: Array<{
   content: string
   summary?: string
   keywords?: string
-  docType?: string
   scope?: string
   farmStayId?: number | null
-  priority?: number
   status?: string
 }>) => request('/api/ai/knowledge/batch-upsert', 'POST', payload)
 
@@ -426,6 +430,72 @@ export const apiKnowledgeRetrievePreview = (payload: {
   scene?: string
   question: string
 }) => request('/api/ai/knowledge/retrieve-preview', 'POST', payload)
+
+export const apiAdminUsers = (params: {
+  keyword?: string
+  userType?: string
+  status?: string
+  page?: number
+  pageSize?: number
+}) => {
+  const query = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && `${value}` !== '') query.append(key, String(value))
+  })
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+  return request<PageResponse<AdminUser>>(`/api/admin/users${suffix}`)
+}
+
+export const apiAdminUpdateUserStatus = (userId: number, payload: { status: 'ACTIVE' | 'DISABLED' }) =>
+  request<AdminUser>(`/api/admin/users/${userId}/status`, 'PUT', payload)
+
+export const apiAdminReviews = (params: { keyword?: string; page?: number; pageSize?: number }) => {
+  const query = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && `${value}` !== '') query.append(key, String(value))
+  })
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+  return request<PageResponse<AdminReview>>(`/api/admin/reviews${suffix}`)
+}
+
+export const apiAdminDeleteReview = (reviewId: number) => request<void>(`/api/admin/reviews/${reviewId}`, 'DELETE')
+
+export const apiAdminDashboardOverview = () => request<AdminDashboardOverview>('/api/admin/dashboard/overview')
+
+export const apiAdminKnowledgeList = (params?: {
+  keyword?: string
+  status?: string
+  farmStayId?: number
+  platformOnly?: boolean
+  page?: number
+  pageSize?: number
+}) => {
+  const query = new URLSearchParams()
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && `${value}` !== '') query.append(key, String(value))
+  })
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+  return request<PageResponse<AdminKnowledgeDocument>>(`/api/admin/knowledge${suffix}`)
+}
+
+export const apiAdminKnowledgeDetail = (id: number) => request<AdminKnowledgeDocument>(`/api/admin/knowledge/${id}`)
+
+export const apiAdminKnowledgeCreate = (payload: AdminKnowledgePayload) =>
+  request<AdminKnowledgeDocument>('/api/admin/knowledge', 'POST', payload)
+
+export const apiAdminKnowledgeUpdate = (id: number, payload: AdminKnowledgePayload) =>
+  request<AdminKnowledgeDocument>(`/api/admin/knowledge/${id}`, 'PUT', payload)
+
+export const apiAdminKnowledgeDelete = (id: number) => request<void>(`/api/admin/knowledge/${id}`, 'DELETE')
+
+export const apiAdminKnowledgeUpdateStatus = (id: number, payload: { status: string }) =>
+  request<AdminKnowledgeDocument>(`/api/admin/knowledge/${id}/status`, 'PUT', payload)
+
+export const apiAdminKnowledgeRetrievePreview = (payload: {
+  farmStayId?: number
+  scene?: string
+  question: string
+}) => request<AdminCitation[]>('/api/admin/knowledge/retrieve-preview', 'POST', payload)
 
 export const clearAuth = () => {
   localStorage.removeItem(AUTH_STORAGE_KEY)

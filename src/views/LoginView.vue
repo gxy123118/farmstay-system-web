@@ -29,7 +29,7 @@ const isRegisterMode = computed(() => mode.value === 'register')
 const canSubmit = computed(() => {
   const base = Boolean(form.username && form.password && form.userType)
   if (isRegisterMode.value) {
-    return base && Boolean(form.displayName?.trim())
+    return form.userType !== 'admin' && base && Boolean(form.displayName?.trim())
   }
   return base
 })
@@ -92,7 +92,7 @@ const handleSubmit = async () => {
       localStorage.removeItem(LOGIN_REDIRECT_KEY)
       await router.replace(redirect)
     } else {
-      await router.replace({ name: 'home' })
+      await router.replace({ name: storedPayload.loginType === 'admin' ? 'admin-console' : 'home' })
     }
   } catch (error) {
     if (error instanceof Error) {
@@ -158,6 +158,10 @@ const handleSubmit = async () => {
             <label class="role-item">
               <input v-model="form.userType" type="radio" value="operator" />
               经营者
+            </label>
+            <label v-if="!isRegisterMode" class="role-item">
+              <input v-model="form.userType" type="radio" value="admin" />
+              管理员
             </label>
           </div>
         </label>

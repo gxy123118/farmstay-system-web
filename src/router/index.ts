@@ -6,6 +6,8 @@ import FarmStayDetail from '../views/FarmStayDetail.vue'
 import PaymentView from '../views/PaymentView.vue'
 import OrderDetail from '../views/OrderDetail.vue'
 import ReviewView from '../views/ReviewView.vue'
+import AdminConsole from '../views/AdminConsole.vue'
+import { readAuthPayload } from '../composables/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -45,7 +47,25 @@ const router = createRouter({
       name: 'order-review',
       component: ReviewView,
     },
+    {
+      path: '/admin',
+      name: 'admin-console',
+      component: AdminConsole,
+    },
   ],
+})
+
+router.beforeEach((to) => {
+  const auth = readAuthPayload()
+  if (to.name === 'admin-console') {
+    if (!auth?.token) {
+      return { name: 'login' }
+    }
+    if (auth.loginType !== 'admin') {
+      return { name: 'home' }
+    }
+  }
+  return true
 })
 
 export default router
