@@ -61,6 +61,19 @@ export type BookingDetail = {
   farmStay?: FarmStaySummary
   room?: RoomSummary
   reviewed?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type OperatorOrderSummary = {
+  farmStayCount?: number
+  orderCount?: number
+  paidOrderCount?: number
+  refundedOrderCount?: number
+  grossTransactionAmount?: number
+  refundAmount?: number
+  netTransactionAmount?: number
+  refundRate?: number
 }
 
 export type BookingCreatePayload = {

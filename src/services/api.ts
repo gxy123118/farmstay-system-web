@@ -4,6 +4,7 @@ import type {
   BookingCreatePayload,
   BookingCreateResponse,
   BookingDetail,
+  OperatorOrderSummary,
   BookingPaymentPayload,
   BookingPaymentResponse,
 } from '../types/booking'
@@ -165,6 +166,24 @@ export const apiUpdateBookingStatus = (payload: Record<string, unknown>) =>
 export const apiMyOrders = () => request<BookingDetail[]>('/api/bookings/mine')
 export const apiOwnerOrders = (farmStayId: number) =>
   request<BookingDetail[]>(`/api/bookings?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
+
+export const apiOperatorOrders = (params?: { farmStayId?: number; status?: string }) => {
+  const query = new URLSearchParams()
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && `${value}` !== '') query.append(key, String(value))
+  })
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+  return request<BookingDetail[]>(`/api/bookings/operator/orders${suffix}`)
+}
+
+export const apiOperatorOrderSummary = (params?: { farmStayId?: number }) => {
+  const query = new URLSearchParams()
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && `${value}` !== '') query.append(key, String(value))
+  })
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+  return request<OperatorOrderSummary>(`/api/bookings/operator/summary${suffix}`)
+}
 
 export const apiListReviews = (farmStayId: number) =>
   request(`/api/reviews?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
