@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { apiOperatorOrderSummary, apiOperatorOrders, apiOwnerFarmstays } from '../services/api'
+import { persistAuthPayload, useAuthState } from '../composables/auth'
+import {
+  apiCompleteBooking,
+  apiCurrentUser,
+  apiOperatorOrderSummary,
+  apiOperatorOrders,
+  apiOwnerFarmstays,
+  mergeAuthPayload,
+} from '../services/api'
 import type { BookingDetail, FarmStaySummary, OperatorOrderSummary } from '../types/booking'
 
 const filters = reactive({
@@ -14,9 +22,12 @@ const summary = ref<OperatorOrderSummary | null>(null)
 const loadingFarmstays = ref(false)
 const loadingSummary = ref(false)
 const loadingOrders = ref(false)
+const completingOrderId = ref<number | null>(null)
+const detailOrder = ref<BookingDetail | null>(null)
 const flash = reactive({ message: '', type: '' as 'success' | 'error' | '' })
+const { sync } = useAuthState()
 
-const statusOptions = ['CREATED', 'PAID', 'CANCELLED', 'REFUNDED']
+const statusOptions = ['CREATED', 'PAID', 'COMPLETED', 'CANCELLED', 'REFUNDED']
 
 const selectedFarmStayId = computed(() => {
   if (!filters.farmStayId) {
@@ -31,10 +42,10 @@ const summaryCards = computed(() => {
   return [
     { label: '店铺数', value: `${source?.farmStayCount ?? 0}`, note: '纳入统计的农家乐数量' },
     { label: '订单总数', value: `${source?.orderCount ?? 0}`, note: '当前经营者名下订单总量' },
-    { label: '已支付订单', value: `${source?.paidOrderCount ?? 0}`, note: '已完成支付的订单数量' },
+    { label: '已支付订单', value: `${source?.paidOrderCount ?? 0}`, note: 'PAID、COMPLETED、REFUNDED 订单总数' },
     { label: '已退款订单', value: `${source?.refundedOrderCount ?? 0}`, note: '状态为退款的订单数量' },
-    { label: '成交总额', value: formatCurrency(source?.grossTransactionAmount), note: 'PAID 与 REFUNDED 订单累计金额' },
-    { label: '退款总额', value: formatCurrency(source?.refundAmount), note: '已发起退款的累计金额' },
+    { label: '成交总额', value: formatCurrency(source?.grossTransactionAmount), note: '历史累计成交金额' },
+    { label: '退款总额', value: formatCurrency(source?.refundAmount), note: '已退款的累计金额' },
     { label: '净成交额', value: formatCurrency(source?.netTransactionAmount), note: '成交总额减退款总额' },
     { label: '退款率', value: formatRate(source?.refundRate), note: '按订单数口径统计' },
   ]
@@ -55,11 +66,7 @@ const setFlash = (message: string, type: 'success' | 'error' = 'success') => {
 
 const formatCurrency = (value?: number | null) => `¥${Number(value ?? 0).toFixed(2)}`
 
-const formatRate = (value?: number | null) => {
-  const numeric = Number(value ?? 0)
-  const display = numeric > 1 ? numeric : numeric * 100
-  return `${display.toFixed(2)}%`
-}
+const formatRate = (value?: number | null) => `${(Number(value ?? 0) * 100).toFixed(2)}%`
 
 const formatTime = (value?: string) => {
   if (!value) return '-'
@@ -80,6 +87,68 @@ const formatDate = (value?: string) => {
     day: '2-digit',
   })
 }
+
+const statusMeta = (status?: string) => {
+  switch (status) {
+    case 'CREATED':
+      return { label: '待支付', tone: 'created' }
+    case 'PAID':
+      return { label: '待核销', tone: 'paid' }
+    case 'COMPLETED':
+      return { label: '已完成', tone: 'completed' }
+    case 'REFUNDED':
+      return { label: '已退款', tone: 'refunded' }
+    case 'CANCELLED':
+      return { label: '已取消', tone: 'cancelled' }
+    default:
+      return { label: status || '-', tone: 'neutral' }
+  }
+}
+
+const closeDetail = () => {
+  detailOrder.value = null
+}
+
+const openDetail = (order: BookingDetail) => {
+  detailOrder.value = order
+}
+
+const detailSections = computed(() => {
+  if (!detailOrder.value) {
+    return null
+  }
+  const order = detailOrder.value
+  return {
+    orderInfo: [
+      { label: '订单号', value: order.orderNo || '-' },
+      { label: '状态', value: statusMeta(order.status).label },
+      { label: '下单时间', value: formatTime(order.createdAt) },
+      { label: '订单金额', value: formatCurrency(order.totalAmount) },
+      { label: '支付渠道', value: order.paymentChannel || '-' },
+    ],
+    stayInfo: [
+      { label: '入住日期', value: formatDate(order.checkInDate) },
+      { label: '离店日期', value: formatDate(order.checkOutDate) },
+      { label: '入住人数', value: String(order.guests ?? '-') },
+      { label: '房型名称', value: order.room?.name || '-' },
+      { label: '床型', value: order.room?.bedType || '-' },
+      { label: '房型可住', value: order.room?.maxGuests ? `${order.room.maxGuests} 人` : '-' },
+    ],
+    contactInfo: [
+      { label: '联系人', value: order.contactName || '-' },
+      { label: '联系电话', value: order.contactPhone || '-' },
+    ],
+    visitorInfo: [
+      { label: '游客昵称', value: order.visitorName || '-' },
+      { label: '游客账号', value: order.visitorUsername || '-' },
+    ],
+    farmStayInfo: [
+      { label: '农家乐名称', value: order.farmStay?.name || '-' },
+      { label: '所在城市', value: order.farmStay?.city || '-' },
+      { label: '详细地址', value: order.farmStay?.address || '-' },
+    ],
+  }
+})
 
 const orderParams = () => ({
   farmStayId: selectedFarmStayId.value,
@@ -128,12 +197,39 @@ const refreshAll = async () => {
   await loadOrders()
 }
 
+const syncOperatorProfile = async () => {
+  try {
+    const latest = mergeAuthPayload(await apiCurrentUser())
+    persistAuthPayload(latest)
+    sync()
+  } catch {
+    // keep current session payload if profile refresh fails
+  }
+}
+
 const handleFarmStayChange = async () => {
   await refreshAll()
 }
 
 const handleStatusChange = async () => {
   await loadOrders()
+}
+
+const completeOrder = async (order: BookingDetail) => {
+  if (order.status !== 'PAID' || completingOrderId.value !== null) {
+    return
+  }
+
+  completingOrderId.value = order.id
+  try {
+    await apiCompleteBooking(order.id)
+    await Promise.all([loadSummary(), loadOrders(), syncOperatorProfile()])
+    setFlash(`订单 ${order.orderNo} 已核销完成，金额已结算到经营者余额`)
+  } catch (err) {
+    setFlash(err instanceof Error ? err.message : '核销完成失败', 'error')
+  } finally {
+    completingOrderId.value = null
+  }
 }
 
 onMounted(async () => {
@@ -147,8 +243,8 @@ onMounted(async () => {
     <header class="board-head">
       <div class="board-copy">
         <p class="eyebrow">Operator Orders</p>
-        <h2 class="section-title">订单与交易统计</h2>
-        <p class="muted">默认展示当前经营者名下全部店铺订单，可按店铺和状态快速筛选。</p>
+        <h2 class="section-title">履约核销与交易统计</h2>
+        <p class="muted">默认展示当前经营者名下全部店铺订单，支付后可在这里执行核销完成并同步结算。</p>
       </div>
       <button class="btn btn-secondary refresh-btn" :disabled="loadingSummary || loadingOrders" @click="refreshAll">
         {{ loadingSummary || loadingOrders ? '刷新中...' : '刷新数据' }}
@@ -189,7 +285,7 @@ onMounted(async () => {
       <header class="table-head">
         <div>
           <h3>订单列表</h3>
-          <p class="muted">展示当前筛选条件下的全部订单与支付信息。</p>
+          <p class="muted">展示当前筛选条件下的订单、支付与履约状态，`PAID` 订单可直接核销完成。</p>
         </div>
         <span class="table-count">{{ loadingOrders ? '加载中...' : `${orders.length} 条订单` }}</span>
       </header>
@@ -210,14 +306,15 @@ onMounted(async () => {
               <th>支付渠道</th>
               <th>是否已评价</th>
               <th>下单时间</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loadingOrders">
-              <td colspan="12" class="empty-cell">正在加载经营者订单...</td>
+              <td colspan="13" class="empty-cell">正在加载经营者订单...</td>
             </tr>
             <tr v-else-if="!orders.length">
-              <td colspan="12" class="empty-cell">当前筛选条件下暂无订单</td>
+              <td colspan="13" class="empty-cell">当前筛选条件下暂无订单</td>
             </tr>
             <tr v-for="order in orders" :key="order.id">
               <td class="mono-cell">{{ order.orderNo || '-' }}</td>
@@ -229,18 +326,139 @@ onMounted(async () => {
               <td>{{ formatDate(order.checkOutDate) }}</td>
               <td>{{ formatCurrency(order.totalAmount) }}</td>
               <td>
-                <span class="status-pill" :class="`status-${String(order.status || '').toLowerCase()}`">
-                  {{ order.status || '-' }}
+                <span class="status-pill" :class="`status-${statusMeta(order.status).tone}`">
+                  {{ statusMeta(order.status).label }}
                 </span>
               </td>
               <td>{{ order.paymentChannel || '-' }}</td>
               <td>{{ order.reviewed ? '已评价' : '未评价' }}</td>
               <td>{{ formatTime(order.createdAt) }}</td>
+              <td>
+                <div class="action-cell">
+                  <button class="btn btn-secondary table-btn table-btn-secondary" @click="openDetail(order)">
+                    查看详情
+                  </button>
+                  <button
+                    v-if="order.status === 'PAID'"
+                    class="btn btn-primary table-btn"
+                    :disabled="completingOrderId === order.id"
+                    @click="completeOrder(order)"
+                  >
+                    {{ completingOrderId === order.id ? '核销中...' : '核销完成' }}
+                  </button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </section>
+
+    <div v-if="detailOrder && detailSections" class="detail-mask" @click.self="closeDetail">
+      <aside class="detail-drawer surface-strong">
+        <header class="drawer-head">
+          <div>
+            <p class="eyebrow">Order Detail</p>
+            <h3>{{ detailOrder.farmStay?.name || '订单详情' }}</h3>
+            <p class="muted">{{ detailOrder.room?.name || '房型待确认' }} · {{ statusMeta(detailOrder.status).label }}</p>
+          </div>
+          <button class="btn btn-secondary drawer-close" @click="closeDetail">关闭</button>
+        </header>
+
+        <div class="drawer-body">
+          <section class="detail-block">
+            <h4>订单信息</h4>
+            <div class="detail-grid">
+              <div v-for="item in detailSections.orderInfo" :key="item.label" class="detail-item">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-block">
+            <h4>入住信息</h4>
+            <div class="detail-grid">
+              <div v-for="item in detailSections.stayInfo" :key="item.label" class="detail-item">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-block dual-block">
+            <div>
+              <h4>联系方式</h4>
+              <div class="detail-grid compact-grid">
+                <div v-for="item in detailSections.contactInfo" :key="item.label" class="detail-item">
+                  <span>{{ item.label }}</span>
+                  <strong>{{ item.value }}</strong>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h4>游客信息</h4>
+              <div class="detail-grid compact-grid">
+                <div v-for="item in detailSections.visitorInfo" :key="item.label" class="detail-item">
+                  <span>{{ item.label }}</span>
+                  <strong>{{ item.value }}</strong>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-block">
+            <h4>店铺信息</h4>
+            <div class="detail-grid">
+              <div v-for="item in detailSections.farmStayInfo" :key="item.label" class="detail-item">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-block dual-block">
+            <div>
+              <h4>餐饮服务</h4>
+              <div v-if="detailOrder.diningItems?.length" class="service-list">
+                <article v-for="item in detailOrder.diningItems" :key="item.id" class="service-item">
+                  <div>
+                    <strong>{{ item.itemName || '餐饮服务' }}</strong>
+                    <span>x {{ item.quantity ?? 1 }}</span>
+                  </div>
+                  <em>{{ formatCurrency(item.price) }}</em>
+                </article>
+              </div>
+              <p v-else class="empty-copy">当前没有餐饮附加服务。</p>
+            </div>
+            <div>
+              <h4>活动服务</h4>
+              <div v-if="detailOrder.activityItems?.length" class="service-list">
+                <article v-for="item in detailOrder.activityItems" :key="item.id" class="service-item">
+                  <div>
+                    <strong>{{ item.itemName || '活动服务' }}</strong>
+                    <span>x {{ item.quantity ?? 1 }}</span>
+                  </div>
+                  <em>{{ formatCurrency(item.price) }}</em>
+                </article>
+              </div>
+              <p v-else class="empty-copy">当前没有活动附加服务。</p>
+            </div>
+          </section>
+
+          <section class="detail-block dual-block">
+            <div>
+              <h4>备注</h4>
+              <p class="remark-copy">{{ detailOrder.remarks || '暂无备注' }}</p>
+            </div>
+            <div>
+              <h4>评价状态</h4>
+              <p class="remark-copy">{{ detailOrder.reviewed ? '游客已评价' : '游客尚未评价' }}</p>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
 
     <section v-if="flash.message" class="status" :class="flash.type === 'error' ? 'error' : ''">
       {{ flash.message }}
@@ -337,7 +555,7 @@ onMounted(async () => {
 
 .order-table {
   width: 100%;
-  min-width: 1240px;
+  min-width: 1380px;
   border-collapse: collapse;
   background: #fff;
 }
@@ -375,14 +593,19 @@ onMounted(async () => {
   font-weight: 700;
 }
 
+.status-created {
+  background: rgba(193, 119, 46, 0.14);
+  color: var(--brand-2);
+}
+
 .status-paid {
   background: rgba(47, 106, 73, 0.12);
   color: var(--brand);
 }
 
-.status-created {
-  background: rgba(193, 119, 46, 0.14);
-  color: var(--brand-2);
+.status-completed {
+  background: rgba(36, 85, 133, 0.12);
+  color: #245585;
 }
 
 .status-refunded {
@@ -390,8 +613,37 @@ onMounted(async () => {
   color: #b1432f;
 }
 
-.status-cancelled {
+.status-cancelled,
+.status-neutral {
   background: rgba(47, 67, 54, 0.12);
+  color: var(--ink-soft);
+}
+
+.action-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.table-btn {
+  min-height: 32px;
+  min-width: 92px;
+  padding: 0 14px;
+  border-radius: 10px;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1;
+  justify-content: center;
+}
+
+.table-btn-secondary {
+  background: #fff;
+}
+
+.action-empty {
   color: var(--ink-soft);
 }
 
@@ -399,6 +651,134 @@ onMounted(async () => {
   text-align: center;
   color: var(--ink-soft);
   padding: 28px 16px;
+}
+
+.detail-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(20, 28, 22, 0.24);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.detail-drawer {
+  width: min(560px, 100vw);
+  height: 100vh;
+  padding: 22px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+  border-radius: 0;
+  box-shadow: -20px 0 48px rgba(20, 28, 22, 0.18);
+}
+
+.drawer-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.drawer-head h3 {
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: 28px;
+}
+
+.drawer-close {
+  min-height: 40px;
+}
+
+.drawer-body {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding-right: 4px;
+}
+
+.detail-block {
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(47, 67, 54, 0.08);
+  background: rgba(255, 255, 255, 0.94);
+  display: grid;
+  gap: 12px;
+}
+
+.detail-block h4 {
+  color: var(--ink-strong);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.compact-grid {
+  grid-template-columns: 1fr;
+}
+
+.detail-item {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(247, 244, 236, 0.92);
+  display: grid;
+  gap: 6px;
+}
+
+.detail-item span,
+.service-item span {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.detail-item strong,
+.service-item strong {
+  color: var(--ink-strong);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.dual-block {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.service-list {
+  display: grid;
+  gap: 10px;
+}
+
+.service-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(247, 244, 236, 0.92);
+}
+
+.service-item div {
+  display: grid;
+  gap: 4px;
+}
+
+.service-item em {
+  color: var(--brand);
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.empty-copy,
+.remark-copy {
+  color: var(--ink-soft);
+  line-height: 1.7;
 }
 
 @media (max-width: 1180px) {
@@ -416,6 +796,11 @@ onMounted(async () => {
 
   .filter-bar,
   .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-grid,
+  .dual-block {
     grid-template-columns: 1fr;
   }
 

@@ -35,7 +35,7 @@ const reviewForm = reactive({
   content: '',
 })
 
-const canReview = computed(() => order.value?.status === 'PAID' && !review.value)
+const canReview = computed(() => (order.value?.status === 'PAID' || order.value?.status === 'COMPLETED') && !review.value)
 const canEditReview = computed(() => typeof payload.value?.userId === 'number')
 const displayRating = computed(() => hoverRating.value || reviewForm.rating)
 const reviewButtonLabel = computed(() => (review.value ? '更新评价' : '提交评价'))
@@ -143,7 +143,7 @@ onMounted(loadData)
           <div class="hero-side">
             <div class="hero-state">
               <span>订单状态</span>
-              <strong>{{ order.status === 'PAID' ? '已支付，可继续评价' : '未支付，当前不可提交' }}</strong>
+              <strong>{{ order.status === 'PAID' || order.status === 'COMPLETED' ? '订单已完成支付，可继续评价' : '未支付，当前不可提交' }}</strong>
             </div>
             <div class="hero-side-meta">
               <span>本次评分</span>
@@ -162,14 +162,14 @@ onMounted(loadData)
               <span class="rating-badge">{{ reviewForm.rating }} / 5</span>
             </div>
 
-            <div class="rating-stage" :class="{ locked: order.status !== 'PAID' }">
+            <div class="rating-stage" :class="{ locked: order.status !== 'PAID' && order.status !== 'COMPLETED' }">
               <button
                 v-for="star in ratingStars"
                 :key="star"
                 type="button"
                 class="star-tile"
                 :class="{ active: displayRating >= star }"
-                :disabled="order.status !== 'PAID'"
+                :disabled="order.status !== 'PAID' && order.status !== 'COMPLETED'"
                 @mouseenter="hoverRating = star"
                 @mouseleave="hoverRating = 0"
                 @click="setRating(star)"
@@ -204,7 +204,7 @@ onMounted(loadData)
               </button>
             </div>
 
-            <p v-if="order.status !== 'PAID'" class="editor-tip">当前订单未支付，评分区保留只读展示，提交按钮不可用。</p>
+            <p v-if="order.status !== 'PAID' && order.status !== 'COMPLETED'" class="editor-tip">当前订单未支付，评分区保留只读展示，提交按钮不可用。</p>
           </article>
 
           <aside class="review-sidebar">

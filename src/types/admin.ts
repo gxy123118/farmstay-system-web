@@ -68,3 +68,22 @@ export type AdminCitation = {
   sourceId: string
   snippet: string
 }
+
+export type AdminWithdraw = {
+  id: number
+  withdrawNo: string
+  userId: number
+  username?: string
+  displayName?: string
+  amount: number
+  channel: string
+  accountName: string
+  accountNo: string
+  status: string
+  remark?: string
+  reviewRemark?: string
+  transferNo?: string
+  createdAt?: string
+  reviewedAt?: string
+  paidAt?: string
+}

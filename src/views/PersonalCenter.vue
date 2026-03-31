@@ -7,11 +7,13 @@ import {
   apiAccountBalance,
   apiAccountBalanceFlows,
   apiCreateRecharge,
+  apiCreateWithdraw,
   apiCurrentUser,
   apiGetRecharge,
+  apiListWithdraws,
   mergeAuthPayload,
 } from '../services/api'
-import type { BalanceFlowResponse, RechargeResponse } from '../types/account'
+import type { BalanceFlowResponse, RechargeResponse, WithdrawResponse } from '../types/account'
 import VisitorCenter from './VisitorCenter.vue'
 import OperatorCenter from './OperatorCenter.vue'
 import OperatorFarmstay from './OperatorFarmstay.vue'
@@ -30,15 +32,27 @@ const flowExpanded = ref(false)
 const balance = ref<number | null>(payload.value?.balance ?? null)
 const balanceFlows = ref<BalanceFlowResponse[]>([])
 const rechargeOpen = ref(false)
+const withdrawOpen = ref(false)
 const qrCodeDataUrl = ref('')
+const withdraws = ref<WithdrawResponse[]>([])
 const statusMessage = reactive({ message: '', type: '' as 'success' | 'error' | '' })
 const rechargeForm = reactive({ amount: '100' })
+const withdrawForm = reactive({
+  amount: '',
+  accountName: '',
+  accountNo: '',
+  remark: '',
+})
 const rechargeState = reactive({
   loading: false,
   polling: false,
   recharge: null as RechargeResponse | null,
   successVisible: false,
   successBalance: null as number | null,
+})
+const withdrawState = reactive({
+  loading: false,
+  successVisible: false,
 })
 
 let pollTimer: number | null = null
@@ -60,7 +74,10 @@ const accountRows = computed(() => [
 ])
 
 const canRecharge = computed(() => isAuthenticated.value && loginType.value === 'visitor')
+const canWithdraw = computed(() => isAuthenticated.value && loginType.value === 'operator')
+const showBalance = computed(() => isAuthenticated.value && (loginType.value === 'visitor' || loginType.value === 'operator'))
 const visibleFlows = computed(() => (flowExpanded.value ? balanceFlows.value : []))
+const visibleWithdraws = computed(() => withdraws.value)
 
 const formatCurrency = (value?: number | null) => `¥${Number(value ?? 0).toFixed(2)}`
 
@@ -134,10 +151,19 @@ const refreshAccountData = async () => {
       const [balanceResult, flowResult] = await Promise.all([apiAccountBalance(), apiAccountBalanceFlows()])
       balance.value = Number(balanceResult.balance ?? 0)
       balanceFlows.value = flowResult
+      withdraws.value = []
+      updateStoredBalance(balance.value)
+    } else if (loginType.value === 'operator') {
+      balanceLoading.value = true
+      const [balanceResult, withdrawList] = await Promise.all([apiAccountBalance(), apiListWithdraws()])
+      balance.value = Number(balanceResult.balance ?? payload.value?.balance ?? 0)
+      balanceFlows.value = []
+      withdraws.value = withdrawList
       updateStoredBalance(balance.value)
     } else {
       balance.value = null
       balanceFlows.value = []
+      withdraws.value = []
     }
   } catch (err) {
     setStatus(err instanceof Error ? err.message : '账户余额加载失败', 'error')
@@ -171,6 +197,22 @@ const openRecharge = () => {
   rechargeState.successBalance = null
   clearSuccessTimer()
   stopPolling()
+}
+
+const openWithdraw = () => {
+  withdrawOpen.value = true
+  withdrawForm.amount = ''
+  withdrawForm.accountName = payload.value?.displayName || ''
+  withdrawForm.accountNo = ''
+  withdrawForm.remark = ''
+  withdrawState.loading = false
+  withdrawState.successVisible = false
+}
+
+const closeWithdraw = () => {
+  withdrawOpen.value = false
+  withdrawState.loading = false
+  withdrawState.successVisible = false
 }
 
 const closeRecharge = () => {
@@ -253,6 +295,64 @@ const submitRecharge = async () => {
   }
 }
 
+const withdrawStatusLabel = (status?: string) => {
+  switch (status) {
+    case 'PENDING':
+      return '审核中'
+    case 'APPROVED':
+      return '待打款'
+    case 'SUCCESS':
+      return '已到账'
+    case 'REJECTED':
+      return '已驳回'
+    default:
+      return status || '-'
+  }
+}
+
+const isValidMainlandPhone = (value: string) => /^1\d{10}$/.test(value)
+
+const submitWithdraw = async () => {
+  const amount = Number(withdrawForm.amount)
+  const accountName = withdrawForm.accountName.trim()
+  const accountNo = withdrawForm.accountNo.trim()
+  const remark = withdrawForm.remark.trim()
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    setStatus('提现金额必须大于 0', 'error')
+    return
+  }
+  if (!accountName) {
+    setStatus('请输入支付宝收款人姓名', 'error')
+    return
+  }
+  if (!isValidMainlandPhone(accountNo)) {
+    setStatus('支付宝绑定手机号必须是 11 位大陆手机号', 'error')
+    return
+  }
+
+  withdrawState.loading = true
+  try {
+    await apiCreateWithdraw({
+      amount,
+      channel: 'ALIPAY',
+      accountName,
+      accountNo,
+      remark: remark || undefined,
+    })
+    await refreshProfile()
+    withdrawState.successVisible = true
+    setStatus('提现申请已提交，当前进入审核中')
+    window.setTimeout(() => {
+      closeWithdraw()
+    }, 1200)
+  } catch (err) {
+    setStatus(err instanceof Error ? err.message : '提现申请提交失败', 'error')
+  } finally {
+    withdrawState.loading = false
+  }
+}
+
 const setTab = (tab: TabKey) => {
   activeTab.value = tab
   const nextQuery = { ...route.query }
@@ -312,7 +412,6 @@ onBeforeUnmount(() => {
           <div class="identity-copy">
             <p class="eyebrow">Account Desk</p>
             <h1 class="section-title">{{ payload?.displayName || payload?.username || '未登录用户' }}</h1>
-            <p class="muted">保留资料和账户入口，其余无效说明区全部去掉。</p>
           </div>
         </div>
 
@@ -333,12 +432,16 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div v-if="canRecharge" class="balance-side">
+        <div v-if="showBalance" class="balance-side">
           <div class="balance-copy">
-            <span>余额</span>
+            <span>{{ loginType === 'operator' ? '账户金额' : '余额' }}</span>
             <strong>{{ balanceLoading ? '加载中...' : formatCurrency(balance) }}</strong>
           </div>
-          <button class="btn btn-primary balance-action" @click="openRecharge">去充值</button>
+          <div class="balance-actions">
+            <button v-if="canRecharge" class="btn btn-primary balance-action" @click="openRecharge">去充值</button>
+            <button v-if="canWithdraw" class="btn btn-secondary balance-action" type="button" @click="openWithdraw">去提现</button>
+            <button v-else class="btn btn-secondary balance-action" type="button" disabled>提现预留</button>
+          </div>
         </div>
       </div>
     </section>
@@ -346,46 +449,73 @@ onBeforeUnmount(() => {
     <section v-if="!isAuthenticated" class="status error">请先登录后查看个人中心。</section>
 
     <template v-else>
-      <section v-if="canRecharge" class="account-board">
+      <section v-if="canRecharge || canWithdraw" class="account-board">
         <article class="surface-strong flow-panel">
           <header class="board-head">
             <div>
-              <p class="eyebrow">Balance Flow</p>
-              <h2 class="section-title">最近余额动态</h2>
+              <p class="eyebrow">{{ canRecharge ? 'Balance Flow' : 'Withdraw Orders' }}</p>
+              <h2 class="section-title">{{ canRecharge ? '最近余额动态' : '提现记录' }}</h2>
             </div>
             <div class="board-actions">
-              <button class="btn btn-secondary" @click="flowExpanded = !flowExpanded">
-                {{ flowExpanded ? '收起动态' : `展开动态${balanceFlows.length ? `（${balanceFlows.length}）` : ''}` }}
-              </button>
-              <button class="btn btn-secondary" :disabled="balanceLoading" @click="refreshAccountData">
-                {{ balanceLoading ? '刷新中...' : '刷新余额' }}
-              </button>
+              <template v-if="canRecharge">
+                <button class="btn btn-secondary" @click="flowExpanded = !flowExpanded">
+                  {{ flowExpanded ? '收起动态' : `展开动态${balanceFlows.length ? `（${balanceFlows.length}）` : ''}` }}
+                </button>
+                <button class="btn btn-secondary" :disabled="balanceLoading" @click="refreshAccountData">
+                  {{ balanceLoading ? '刷新中...' : '刷新余额' }}
+                </button>
+              </template>
+              <template v-else>
+                <button class="btn btn-secondary" @click="openWithdraw">发起提现</button>
+                <button class="btn btn-secondary" :disabled="balanceLoading" @click="refreshAccountData">
+                  {{ balanceLoading ? '刷新中...' : '刷新记录' }}
+                </button>
+              </template>
             </div>
           </header>
 
-          <div v-if="!flowExpanded" class="collapsed-tip">余额动态默认收起，点击展开后再查看最近充值、支付和退款记录。</div>
-          <div v-else-if="!visibleFlows.length" class="empty-line">当前还没有余额流水。</div>
+          <template v-if="canRecharge">
+            <div v-if="!flowExpanded" class="collapsed-tip">余额动态默认收起，点击展开后再查看最近充值、支付和退款记录。</div>
+            <div v-else-if="!visibleFlows.length" class="empty-line">当前还没有余额流水。</div>
 
-          <div v-else class="flow-list">
-            <article v-for="flow in visibleFlows" :key="flow.flowNo" class="flow-item">
-              <div class="flow-main">
-                <span class="flow-type" :class="flowMeta(flow).tone">{{ flowMeta(flow).label }}</span>
-                <strong>{{ flow.remark || flow.bizNo }}</strong>
-                <p>{{ formatTime(flow.createdAt) }}</p>
-              </div>
-              <div class="flow-side">
-                <em :class="Number(flow.amount) >= 0 ? 'income' : 'expense'">
-                  {{ Number(flow.amount) >= 0 ? '+' : '' }}{{ formatCurrency(flow.amount) }}
-                </em>
-                <span>变动后 {{ formatCurrency(flow.balanceAfter) }}</span>
-              </div>
-            </article>
-          </div>
+            <div v-else class="flow-list">
+              <article v-for="flow in visibleFlows" :key="flow.flowNo" class="flow-item">
+                <div class="flow-main">
+                  <span class="flow-type" :class="flowMeta(flow).tone">{{ flowMeta(flow).label }}</span>
+                  <strong>{{ flow.remark || flow.bizNo }}</strong>
+                  <p>{{ formatTime(flow.createdAt) }}</p>
+                </div>
+                <div class="flow-side">
+                  <em :class="Number(flow.amount) >= 0 ? 'income' : 'expense'">
+                    {{ Number(flow.amount) >= 0 ? '+' : '' }}{{ formatCurrency(flow.amount) }}
+                  </em>
+                  <span>变动后 {{ formatCurrency(flow.balanceAfter) }}</span>
+                </div>
+              </article>
+            </div>
+          </template>
+
+          <template v-else>
+            <div v-if="!visibleWithdraws.length" class="empty-line">当前还没有提现记录。</div>
+            <div v-else class="flow-list">
+              <article v-for="item in visibleWithdraws" :key="item.withdrawNo" class="flow-item">
+                <div class="flow-main">
+                  <span class="flow-type neutral">{{ withdrawStatusLabel(item.status) }}</span>
+                  <strong>{{ item.accountName }} · {{ item.accountNo }}</strong>
+                  <p>{{ formatTime(item.createdAt) }}</p>
+                </div>
+                <div class="flow-side">
+                  <em class="expense">-{{ formatCurrency(item.amount) }}</em>
+                  <span>{{ item.reviewRemark || item.remark || item.withdrawNo }}</span>
+                </div>
+              </article>
+            </div>
+          </template>
         </article>
       </section>
 
       <section class="workspace">
-        <aside class="sidebar surface-strong">
+        <nav class="sidebar surface-strong">
           <button
             v-for="item in menuItems"
             :key="item.key"
@@ -396,7 +526,7 @@ onBeforeUnmount(() => {
             <strong>{{ item.label }}</strong>
             <span>{{ item.note }}</span>
           </button>
-        </aside>
+        </nav>
 
         <section class="panel">
           <VisitorCenter v-if="loginType === 'visitor' && activeTab === 'orders'" />
@@ -475,6 +605,71 @@ onBeforeUnmount(() => {
             <div v-else class="qr-placeholder">
               <strong>生成充值单后，这里会出现二维码。</strong>
               <p>扫码完成后页面会自动感知支付结果并刷新余额。</p>
+            </div>
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="withdrawOpen" class="modal-mask" @click.self="closeWithdraw">
+      <section class="recharge-modal surface-strong">
+        <header class="modal-head">
+          <div>
+            <p class="eyebrow">Withdraw</p>
+            <h2 class="section-title">支付宝提现</h2>
+          </div>
+          <button class="btn btn-secondary" @click="closeWithdraw">关闭</button>
+        </header>
+
+        <div class="recharge-layout">
+          <article class="recharge-form">
+            <template v-if="!withdrawState.successVisible">
+              <label class="field">
+                <span>提现金额</span>
+                <input v-model="withdrawForm.amount" class="input amount-input" type="number" min="0.01" step="0.01" placeholder="输入提现金额" />
+              </label>
+
+              <label class="field">
+                <span>支付宝收款人姓名</span>
+                <input v-model="withdrawForm.accountName" class="input amount-input" placeholder="请输入支付宝实名姓名" />
+              </label>
+
+              <label class="field">
+                <span>支付宝绑定手机号</span>
+                <input v-model="withdrawForm.accountNo" class="input amount-input" inputmode="numeric" maxlength="11" placeholder="例如：13800138000" />
+              </label>
+
+              <label class="field">
+                <span>提现备注</span>
+                <textarea v-model="withdrawForm.remark" class="textarea" placeholder="可选，填写本次提现说明" />
+              </label>
+
+              <div class="recharge-summary">
+                <span>当前账户金额</span>
+                <strong>{{ formatCurrency(balance) }}</strong>
+              </div>
+
+              <button class="btn btn-primary submit-btn" :disabled="withdrawState.loading" @click="submitWithdraw">
+                {{ withdrawState.loading ? '提交中...' : '提交提现申请' }}
+              </button>
+
+              <p class="muted">当前仅支持支付宝提现，请填写支付宝实名姓名和绑定手机号。提现申请提交后将进入后台审核，审核通过后由平台人工打款。</p>
+            </template>
+
+            <div v-else class="success-panel">
+              <span>申请已提交</span>
+              <strong>审核中</strong>
+              <p>提现申请已创建，余额和提现记录已同步刷新。</p>
+            </div>
+          </article>
+
+          <article class="qr-panel">
+            <div class="qr-placeholder">
+              <strong>提现状态说明</strong>
+              <p>`审核中`：待管理员审核。</p>
+              <p>`待打款`：审核通过，等待平台人工打款。</p>
+              <p>`已到账`：管理员已确认人工打款完成。</p>
+              <p>`已驳回`：审核未通过，金额已自动退回账户余额。</p>
             </div>
           </article>
         </div>
@@ -579,17 +774,27 @@ onBeforeUnmount(() => {
 .balance-copy strong {
   color: var(--ink-strong);
   font-size: 18px;
+  font-family: inherit;
+  font-weight: 700;
 }
 
 .balance-copy strong {
-  font-family: var(--font-display);
-  font-size: 36px;
+  font-size: 32px;
+  line-height: 1.1;
 }
 
 .balance-side {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: auto auto;
   gap: 16px;
+  align-items: center;
+}
+
+.balance-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .balance-action {
@@ -707,16 +912,17 @@ onBeforeUnmount(() => {
 
 .workspace {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
 .sidebar {
   padding: 12px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
-  height: fit-content;
+  flex-wrap: wrap;
+  align-items: stretch;
 }
 
 .nav-item {
@@ -729,6 +935,8 @@ onBeforeUnmount(() => {
   cursor: pointer;
   display: grid;
   gap: 4px;
+  flex: 0 1 220px;
+  min-height: 72px;
 }
 
 .nav-item strong {
@@ -878,15 +1086,9 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 980px) {
-  .workspace,
   .account-strip,
   .recharge-layout {
     grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    flex-direction: row;
-    flex-wrap: wrap;
   }
 
   .account-info {
@@ -897,6 +1099,10 @@ onBeforeUnmount(() => {
   .flow-item {
     justify-content: space-between;
     grid-template-columns: 1fr;
+  }
+
+  .balance-actions {
+    justify-content: flex-start;
   }
 
   .flow-side {
@@ -912,6 +1118,10 @@ onBeforeUnmount(() => {
 
   .quick-actions {
     justify-content: flex-start;
+  }
+
+  .nav-item {
+    flex-basis: 100%;
   }
 
   .modal-mask {

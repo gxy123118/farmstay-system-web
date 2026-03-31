@@ -60,6 +60,8 @@ const getStatusMeta = (status?: string) => {
       return { label: '待支付', tone: 'pending' }
     case 'PAID':
       return { label: '已支付', tone: 'paid' }
+    case 'COMPLETED':
+      return { label: '已完成', tone: 'completed' }
     case 'REFUNDED':
       return { label: '已退款', tone: 'refunded' }
     case 'CANCELLED':
@@ -73,7 +75,7 @@ const loadOrders = async () => {
   try {
     const list = (await apiMyOrders()) as Order[]
     unpaid.value = list.filter((o) => o.status === 'CREATED' || o.status === 'CANCELLED')
-    paid.value = list.filter((o) => o.status === 'PAID' || o.status === 'REFUNDED')
+    paid.value = list.filter((o) => o.status === 'PAID' || o.status === 'COMPLETED' || o.status === 'REFUNDED')
 
     const queryOrderId = Number(route.query.orderId)
     if (!Number.isNaN(queryOrderId) && queryOrderId > 0) {
@@ -217,7 +219,7 @@ onMounted(loadOrders)
                 <div class="ticket-actions">
                   <button v-if="o.status === 'CREATED'" class="btn btn-primary ticket-btn" @click.stop="goPay(o.id)">立即支付</button>
                   <button
-                    v-if="o.status === 'PAID' || o.reviewed"
+                    v-if="o.status === 'PAID' || o.status === 'COMPLETED' || o.reviewed"
                     class="btn btn-secondary ticket-btn"
                     @click.stop="goReview(o.id)"
                   >
@@ -487,6 +489,11 @@ onMounted(loadOrders)
 .status-pill.paid {
   background: rgba(47, 106, 73, 0.12);
   color: var(--brand);
+}
+
+.status-pill.completed {
+  background: rgba(36, 85, 133, 0.12);
+  color: #245585;
 }
 
 .status-pill.refunded {

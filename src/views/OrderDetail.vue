@@ -35,6 +35,7 @@ const canRefund = computed(() => order.value?.status === 'PAID')
 const canPay = computed(() => order.value?.status === 'CREATED')
 const reviewLabel = computed(() => (order.value?.reviewed ? '查看评价' : '去评价'))
 const refundLabel = computed(() => (order.value?.status === 'REFUNDED' ? '已退回余额' : '申请退款'))
+const canReview = computed(() => order.value?.status === 'PAID' || order.value?.status === 'COMPLETED')
 const diningItems = computed(() => order.value?.diningItems ?? [])
 const activityItems = computed(() => order.value?.activityItems ?? [])
 
@@ -47,6 +48,8 @@ const statusMeta = computed(() => {
       return { label: '待支付', tone: 'pending', note: '订单已生成，等待完成支付后生效。' }
     case 'PAID':
       return { label: '已支付', tone: 'paid', note: '订单已生效，可以继续查看详情、评价或申请退款。' }
+    case 'COMPLETED':
+      return { label: '已完成', tone: 'completed', note: '订单已完成履约并已结算给经营者，当前不可再申请退款。' }
     case 'REFUNDED':
       return { label: '已退款', tone: 'refunded', note: '退款金额已按后端规则退回余额。' }
     case 'CANCELLED':
@@ -254,7 +257,7 @@ onMounted(loadOrder)
 
             <div class="action-stack">
               <button v-if="canPay" class="btn btn-primary action-btn" @click="goPay">去支付</button>
-              <button v-else-if="order.status === 'PAID'" class="btn btn-primary action-btn" @click="goReview">{{ reviewLabel }}</button>
+              <button v-else-if="canReview" class="btn btn-primary action-btn" @click="goReview">{{ reviewLabel }}</button>
               <button class="btn btn-secondary action-btn" :disabled="!canRefund || refunding || order.status === 'REFUNDED'" @click="requestRefund">
                 {{ refunding ? '退款处理中...' : refundLabel }}
               </button>
@@ -346,6 +349,11 @@ onMounted(loadOrder)
 .hero-status.paid {
   background: rgba(47, 106, 73, 0.12);
   color: var(--brand);
+}
+
+.hero-status.completed {
+  background: rgba(36, 85, 133, 0.12);
+  color: #245585;
 }
 
 .hero-status.refunded {

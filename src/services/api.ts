@@ -13,8 +13,11 @@ import type {
   BalanceResponse,
   RechargeCreatePayload,
   RechargeResponse,
+  WithdrawCreatePayload,
+  WithdrawResponse,
 } from '../types/account'
 import type {
+  AdminWithdraw,
   AdminCitation,
   AdminDashboardOverview,
   AdminKnowledgeDocument,
@@ -107,6 +110,9 @@ export const apiAccountBalanceFlows = () => request<BalanceFlowResponse[]>('/api
 export const apiCreateRecharge = (payload: RechargeCreatePayload) =>
   request<RechargeResponse>('/api/account/recharges', 'POST', payload)
 export const apiGetRecharge = (rechargeNo: string) => request<RechargeResponse>(`/api/account/recharges/${rechargeNo}`)
+export const apiCreateWithdraw = (payload: WithdrawCreatePayload) =>
+  request<WithdrawResponse>('/api/account/withdraws', 'POST', payload)
+export const apiListWithdraws = () => request<WithdrawResponse[]>('/api/account/withdraws')
 
 export const apiOverview = () => request('/api/home/overview')
 
@@ -159,6 +165,8 @@ export const apiCreateBooking = (payload: BookingCreatePayload) =>
   request<BookingCreateResponse>('/api/bookings', 'POST', payload)
 export const apiPayBooking = (payload: BookingPaymentPayload) =>
   request<BookingPaymentResponse>('/api/bookings/pay', 'POST', payload)
+export const apiCompleteBooking = (orderId: number) =>
+  request<BookingCreateResponse>(`/api/bookings/${orderId}/complete`, 'POST')
 export const apiCancelBooking = (orderId: number) => request<BookingCreateResponse>(`/api/bookings/${orderId}/cancel`, 'POST')
 export const apiRefundBooking = (orderId: number) => request<BookingCreateResponse>(`/api/bookings/${orderId}/refund`, 'POST')
 export const apiUpdateBookingStatus = (payload: Record<string, unknown>) =>
@@ -515,6 +523,26 @@ export const apiAdminKnowledgeRetrievePreview = (payload: {
   scene?: string
   question: string
 }) => request<AdminCitation[]>('/api/admin/knowledge/retrieve-preview', 'POST', payload)
+
+export const apiAdminWithdraws = (params?: { status?: string; page?: number; pageSize?: number }) => {
+  const query = new URLSearchParams()
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && `${value}` !== '') query.append(key, String(value))
+  })
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+  return request<PageResponse<AdminWithdraw>>(`/api/admin/withdraws${suffix}`)
+}
+
+export const apiAdminApproveWithdraw = (withdrawId: number, payload: { reviewRemark: string }) =>
+  request<AdminWithdraw>(`/api/admin/withdraws/${withdrawId}/approve`, 'POST', payload)
+
+export const apiAdminRejectWithdraw = (withdrawId: number, payload: { reviewRemark: string }) =>
+  request<AdminWithdraw>(`/api/admin/withdraws/${withdrawId}/reject`, 'POST', payload)
+
+export const apiAdminCompleteWithdrawTransfer = (
+  withdrawId: number,
+  payload: { transferNo: string; reviewRemark?: string },
+) => request<AdminWithdraw>(`/api/admin/withdraws/${withdrawId}/complete-transfer`, 'POST', payload)
 
 export const clearAuth = () => {
   localStorage.removeItem(AUTH_STORAGE_KEY)

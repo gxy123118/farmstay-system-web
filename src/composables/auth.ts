@@ -12,6 +12,7 @@ export interface AuthTokenPayload {
 }
 
 export const AUTH_STORAGE_KEY = 'farmstay-token'
+const AUTH_SYNC_EVENT = 'farmstay-auth-sync'
 
 export const readAuthPayload = (): AuthTokenPayload | null => {
   if (typeof window === 'undefined') {
@@ -31,11 +32,13 @@ export const readAuthPayload = (): AuthTokenPayload | null => {
 export const persistAuthPayload = (payload: AuthTokenPayload) => {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload))
+  window.dispatchEvent(new CustomEvent(AUTH_SYNC_EVENT))
 }
 
 export const clearAuthPayload = () => {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(AUTH_STORAGE_KEY)
+  window.dispatchEvent(new CustomEvent(AUTH_SYNC_EVENT))
 }
 
 export const useAuthState = () => {
@@ -45,17 +48,20 @@ export const useAuthState = () => {
   }
 
   const storageHandler = () => sync()
+  const authSyncHandler = () => sync()
 
   onMounted(() => {
     sync()
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', storageHandler)
+      window.addEventListener(AUTH_SYNC_EVENT, authSyncHandler)
     }
   })
 
   onBeforeUnmount(() => {
     if (typeof window !== 'undefined') {
       window.removeEventListener('storage', storageHandler)
+      window.removeEventListener(AUTH_SYNC_EVENT, authSyncHandler)
     }
   })
 

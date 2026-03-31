@@ -2,6 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  apiAdminApproveWithdraw,
+  apiAdminCompleteWithdrawTransfer,
   apiAdminDashboardOverview,
   apiAdminDeleteReview,
   apiAdminKnowledgeCreate,
@@ -10,12 +12,15 @@ import {
   apiAdminKnowledgeRetrievePreview,
   apiAdminKnowledgeUpdate,
   apiAdminKnowledgeUpdateStatus,
+  apiAdminRejectWithdraw,
   apiAdminReviews,
   apiAdminUpdateUserStatus,
   apiAdminUsers,
+  apiAdminWithdraws,
 } from '../services/api'
 import { clearAuthPayload, useAuthState } from '../composables/auth'
 import type {
+  AdminWithdraw,
   AdminCitation,
   AdminDashboardOverview,
   AdminKnowledgeDocument,
@@ -24,7 +29,7 @@ import type {
   AdminUser,
 } from '../types/admin'
 
-type AdminTab = 'dashboard' | 'users' | 'reviews' | 'knowledge'
+type AdminTab = 'dashboard' | 'users' | 'reviews' | 'knowledge' | 'withdraws'
 
 const router = useRouter()
 const { payload } = useAuthState()
@@ -65,11 +70,26 @@ const knowledgeFilters = reactive({
 const knowledgeList = ref<AdminKnowledgeDocument[]>([])
 const knowledgeTotal = ref(0)
 const knowledgeLoading = ref(false)
+const withdrawFilters = reactive({
+  status: '',
+  page: 1,
+  pageSize: 10,
+})
+const withdrawList = ref<AdminWithdraw[]>([])
+const withdrawTotal = ref(0)
+const withdrawLoading = ref(false)
 
 const knowledgeEditorOpen = ref(false)
 const knowledgePreviewLoading = ref(false)
 const knowledgePreview = ref<AdminCitation[]>([])
 const editingKnowledgeId = ref<number | null>(null)
+const withdrawDialogMode = ref<'approve' | 'reject' | 'transfer' | null>(null)
+const withdrawDialogTarget = ref<AdminWithdraw | null>(null)
+const withdrawDialogForm = reactive({
+  reviewRemark: '',
+  transferNo: '',
+})
+const withdrawActionLoading = ref(false)
 const knowledgeForm = reactive<AdminKnowledgePayload>({
   knowledgeCode: '',
   title: '',
@@ -205,8 +225,21 @@ const loadKnowledge = async () => {
   }
 }
 
+const loadWithdraws = async () => {
+  withdrawLoading.value = true
+  try {
+    const result = await apiAdminWithdraws(withdrawFilters)
+    withdrawList.value = result.list
+    withdrawTotal.value = result.total
+  } catch (err) {
+    setFlash(err instanceof Error ? err.message : '提现列表加载失败', 'error')
+  } finally {
+    withdrawLoading.value = false
+  }
+}
+
 const loadAll = async () => {
-  await Promise.all([loadDashboard(), loadUsers(), loadReviews(), loadKnowledge()])
+  await Promise.all([loadDashboard(), loadUsers(), loadReviews(), loadKnowledge(), loadWithdraws()])
 }
 
 const updateUserStatus = async (user: AdminUser, status: 'ACTIVE' | 'DISABLED') => {
@@ -312,6 +345,81 @@ const previewKnowledge = async () => {
   }
 }
 
+const withdrawStatusLabel = (status?: string) => {
+  switch (status) {
+    case 'PENDING':
+      return '审核中'
+    case 'APPROVED':
+      return '待打款'
+    case 'SUCCESS':
+      return '已到账'
+    case 'REJECTED':
+      return '已驳回'
+    default:
+      return status || '-'
+  }
+}
+
+const openWithdrawDialog = (mode: 'approve' | 'reject' | 'transfer', item: AdminWithdraw) => {
+  withdrawDialogMode.value = mode
+  withdrawDialogTarget.value = item
+  withdrawDialogForm.reviewRemark = ''
+  withdrawDialogForm.transferNo = ''
+}
+
+const resetWithdrawDialog = () => {
+  withdrawDialogMode.value = null
+  withdrawDialogTarget.value = null
+  withdrawDialogForm.reviewRemark = ''
+  withdrawDialogForm.transferNo = ''
+}
+
+const closeWithdrawDialog = () => {
+  if (withdrawActionLoading.value) {
+    return
+  }
+  resetWithdrawDialog()
+}
+
+const confirmWithdrawDialog = async () => {
+  if (!withdrawDialogMode.value || !withdrawDialogTarget.value) {
+    return
+  }
+
+  const reviewRemark = withdrawDialogForm.reviewRemark.trim()
+  if ((withdrawDialogMode.value === 'approve' || withdrawDialogMode.value === 'reject') && !reviewRemark) {
+    setFlash('审核备注不能为空', 'error')
+    return
+  }
+  if (withdrawDialogMode.value === 'transfer' && !withdrawDialogForm.transferNo.trim()) {
+    setFlash('打款凭证号不能为空', 'error')
+    return
+  }
+
+  withdrawActionLoading.value = true
+  try {
+    if (withdrawDialogMode.value === 'approve') {
+      await apiAdminApproveWithdraw(withdrawDialogTarget.value.id, { reviewRemark })
+      setFlash(`提现单 ${withdrawDialogTarget.value.withdrawNo} 已审核通过`)
+    } else if (withdrawDialogMode.value === 'reject') {
+      await apiAdminRejectWithdraw(withdrawDialogTarget.value.id, { reviewRemark })
+      setFlash(`提现单 ${withdrawDialogTarget.value.withdrawNo} 已驳回`)
+    } else {
+      await apiAdminCompleteWithdrawTransfer(withdrawDialogTarget.value.id, {
+        transferNo: withdrawDialogForm.transferNo.trim(),
+        reviewRemark: reviewRemark || undefined,
+      })
+      setFlash(`提现单 ${withdrawDialogTarget.value.withdrawNo} 已确认打款完成`)
+    }
+    await loadWithdraws()
+    resetWithdrawDialog()
+  } catch (err) {
+    setFlash(err instanceof Error ? err.message : '提现审核操作失败', 'error')
+  } finally {
+    withdrawActionLoading.value = false
+  }
+}
+
 const logout = () => {
   clearAuthPayload()
   router.replace({ name: 'login' })
@@ -340,6 +448,7 @@ onMounted(loadAll)
           <button class="nav-btn" :class="{ active: activeTab === 'dashboard' }" @click="activeTab = 'dashboard'">平台统计</button>
           <button class="nav-btn" :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">用户管理</button>
           <button class="nav-btn" :class="{ active: activeTab === 'reviews' }" @click="activeTab = 'reviews'">评论治理</button>
+          <button class="nav-btn" :class="{ active: activeTab === 'withdraws' }" @click="activeTab = 'withdraws'">提现审核</button>
           <button class="nav-btn" :class="{ active: activeTab === 'knowledge' }" @click="activeTab = 'knowledge'">知识库管理</button>
         </aside>
 
@@ -488,6 +597,86 @@ onMounted(loadAll)
             </template>
           </section>
 
+          <section v-else-if="activeTab === 'withdraws'" class="panel-block">
+            <header class="block-head">
+              <div>
+                <p class="eyebrow">Withdraws</p>
+                <h2 class="section-title">提现审核页</h2>
+              </div>
+              <div class="toolbar">
+                <select v-model="withdrawFilters.status" class="select compact-input">
+                  <option value="">全部状态</option>
+                  <option value="PENDING">PENDING</option>
+                  <option value="APPROVED">APPROVED</option>
+                  <option value="SUCCESS">SUCCESS</option>
+                  <option value="REJECTED">REJECTED</option>
+                </select>
+                <button class="btn btn-secondary" @click="loadWithdraws">筛选</button>
+              </div>
+            </header>
+
+            <div class="table-card">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>提现单号</th>
+                    <th>经营者</th>
+                    <th>金额</th>
+                    <th>渠道</th>
+                    <th>收款人</th>
+                    <th>绑定手机号</th>
+                    <th>状态</th>
+                    <th>申请时间</th>
+                    <th>审核备注</th>
+                    <th>打款凭证号</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="withdrawLoading">
+                    <td colspan="11">加载中...</td>
+                  </tr>
+                  <tr v-for="item in withdrawList" :key="item.id">
+                    <td>{{ item.withdrawNo }}</td>
+                    <td>{{ item.displayName || item.username || '-' }}</td>
+                    <td>¥{{ Number(item.amount ?? 0).toFixed(2) }}</td>
+                    <td>{{ item.channel }}</td>
+                    <td>{{ item.accountName }}</td>
+                    <td>{{ item.accountNo }}</td>
+                    <td>{{ withdrawStatusLabel(item.status) }}</td>
+                    <td>{{ formatTime(item.createdAt) }}</td>
+                    <td>{{ item.reviewRemark || '-' }}</td>
+                    <td>{{ item.transferNo || '-' }}</td>
+                    <td class="action-cell">
+                      <button
+                        v-if="item.status === 'PENDING'"
+                        class="btn table-btn table-btn-enable"
+                        @click="openWithdrawDialog('approve', item)"
+                      >
+                        通过
+                      </button>
+                      <button
+                        v-if="item.status === 'PENDING'"
+                        class="btn table-btn table-btn-delete"
+                        @click="openWithdrawDialog('reject', item)"
+                      >
+                        驳回
+                      </button>
+                      <button
+                        v-if="item.status === 'APPROVED'"
+                        class="btn table-btn table-btn-edit"
+                        @click="openWithdrawDialog('transfer', item)"
+                      >
+                        确认打款
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="table-foot">共 {{ withdrawTotal }} 条提现申请</p>
+            </div>
+          </section>
+
           <section v-else class="panel-block">
             <header class="block-head">
               <div>
@@ -598,6 +787,52 @@ onMounted(loadAll)
         </div>
       </section>
     </div>
+
+    <div v-if="withdrawDialogMode" class="modal-mask" @click.self="closeWithdrawDialog">
+      <section class="dialog-card surface-strong">
+        <header class="block-head">
+          <div>
+            <p class="eyebrow">Withdraw Action</p>
+            <h2 class="section-title">
+              {{
+                withdrawDialogMode === 'approve'
+                  ? '审核通过'
+                  : withdrawDialogMode === 'reject'
+                    ? '审核驳回'
+                    : '确认人工打款'
+              }}
+            </h2>
+          </div>
+          <button class="btn btn-secondary" :disabled="withdrawActionLoading" @click="closeWithdrawDialog">关闭</button>
+        </header>
+
+        <div class="editor-form">
+          <p class="muted">提现单号：{{ withdrawDialogTarget?.withdrawNo }}</p>
+          <p class="muted">经营者：{{ withdrawDialogTarget?.displayName || withdrawDialogTarget?.username || '-' }}</p>
+          <p class="muted">金额：¥{{ Number(withdrawDialogTarget?.amount ?? 0).toFixed(2) }}</p>
+
+          <input
+            v-if="withdrawDialogMode === 'transfer'"
+            v-model="withdrawDialogForm.transferNo"
+            class="input"
+            placeholder="请输入人工打款凭证号"
+          />
+
+          <textarea
+            v-model="withdrawDialogForm.reviewRemark"
+            class="textarea"
+            :placeholder="withdrawDialogMode === 'transfer' ? '可选备注' : '请输入审核备注'"
+          />
+
+          <div class="dialog-actions">
+            <button class="btn btn-secondary" :disabled="withdrawActionLoading" @click="closeWithdrawDialog">取消</button>
+            <button class="btn btn-primary" :disabled="withdrawActionLoading" @click="confirmWithdrawDialog">
+              {{ withdrawActionLoading ? '处理中...' : '确认提交' }}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
   </main>
 </template>
 
@@ -658,25 +893,31 @@ onMounted(loadAll)
 
 .admin-layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
 }
 
 .admin-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(148px, max-content);
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
 }
 
 .nav-btn {
   border: 1px solid var(--line-strong);
-  border-radius: 14px;
+  border-radius: 16px;
   background: #fff;
   color: var(--ink);
-  text-align: left;
-  padding: 12px 14px;
+  text-align: center;
+  min-height: 52px;
+  padding: 0 18px;
   cursor: pointer;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .nav-btn.active {
@@ -898,8 +1139,20 @@ onMounted(loadAll)
   line-height: 1.7;
 }
 
+.dialog-card {
+  width: min(520px, 100%);
+  padding: 22px;
+  display: grid;
+  gap: 16px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 @media (max-width: 1080px) {
-  .admin-layout,
   .knowledge-layout,
   .stats-grid {
     grid-template-columns: 1fr;
@@ -926,6 +1179,13 @@ onMounted(loadAll)
     flex-wrap: wrap;
     justify-content: flex-start;
     margin-left: 0;
+  }
+
+  .admin-nav {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    grid-auto-columns: unset;
+    overflow-x: visible;
   }
 
   .inline-fields {
