@@ -1,0 +1,133 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e7]: C
+          - generic [ref=e8]:
+            - paragraph [ref=e9]: Account Desk
+            - heading "Codex Operator" [level=1] [ref=e10]
+        - generic [ref=e11]:
+          - button "返回首页" [ref=e12] [cursor=pointer]
+          - button "刷新资料" [ref=e13] [cursor=pointer]
+          - button "退出登录" [ref=e14] [cursor=pointer]
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - generic [ref=e18]: 账号
+            - strong [ref=e19]: codex_op_1776071457310
+          - generic [ref=e20]:
+            - generic [ref=e21]: 昵称
+            - strong [ref=e22]: Codex Operator
+          - generic [ref=e23]:
+            - generic [ref=e24]: 角色
+            - strong [ref=e25]: operator
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]: 账户金额
+            - strong [ref=e29]: ¥0.00
+          - button "去提现" [ref=e31] [cursor=pointer]
+    - article [ref=e33]:
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - paragraph [ref=e36]: Withdraw Orders
+          - heading "提现记录" [level=2] [ref=e37]
+        - generic [ref=e38]:
+          - button "发起提现" [ref=e39] [cursor=pointer]
+          - button "刷新记录" [ref=e40] [cursor=pointer]
+      - generic [ref=e41]: 当前还没有提现记录。
+    - generic [ref=e42]:
+      - navigation [ref=e43]:
+        - button "我的订单 订单、评价与支付记录" [ref=e44] [cursor=pointer]:
+          - strong [ref=e45]: 我的订单
+          - generic [ref=e46]: 订单、评价与支付记录
+        - button "我的农家乐 店铺资料与房型管理" [ref=e47] [cursor=pointer]:
+          - strong [ref=e48]: 我的农家乐
+          - generic [ref=e49]: 店铺资料与房型管理
+        - button "经营建议 评论驱动分析结果" [ref=e50] [cursor=pointer]:
+          - strong [ref=e51]: 经营建议
+          - generic [ref=e52]: 评论驱动分析结果
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - paragraph [ref=e57]: Operator Orders
+            - heading "履约核销与交易统计" [level=2] [ref=e58]
+            - paragraph [ref=e59]: 默认展示当前经营者名下全部店铺订单，支付后可在这里执行核销完成并同步结算。
+          - button "刷新数据" [ref=e60] [cursor=pointer]
+        - generic [ref=e61]:
+          - article [ref=e62]:
+            - generic [ref=e63]: 店铺数
+            - strong [ref=e64]: "0"
+            - paragraph [ref=e65]: 纳入统计的农家乐数量
+          - article [ref=e66]:
+            - generic [ref=e67]: 订单总数
+            - strong [ref=e68]: "0"
+            - paragraph [ref=e69]: 当前经营者名下订单总量
+          - article [ref=e70]:
+            - generic [ref=e71]: 已支付订单
+            - strong [ref=e72]: "0"
+            - paragraph [ref=e73]: PAID、COMPLETED、REFUNDED 订单总数
+          - article [ref=e74]:
+            - generic [ref=e75]: 已退款订单
+            - strong [ref=e76]: "0"
+            - paragraph [ref=e77]: 状态为退款的订单数量
+          - article [ref=e78]:
+            - generic [ref=e79]: 成交总额
+            - strong [ref=e80]: ¥0.00
+            - paragraph [ref=e81]: 历史累计成交金额
+          - article [ref=e82]:
+            - generic [ref=e83]: 退款总额
+            - strong [ref=e84]: ¥0.00
+            - paragraph [ref=e85]: 已退款的累计金额
+          - article [ref=e86]:
+            - generic [ref=e87]: 净成交额
+            - strong [ref=e88]: ¥0.00
+            - paragraph [ref=e89]: 成交总额减退款总额
+          - article [ref=e90]:
+            - generic [ref=e91]: 退款率
+            - strong [ref=e92]: 0.00%
+            - paragraph [ref=e93]: 按订单数口径统计
+        - generic [ref=e94]:
+          - generic [ref=e95]:
+            - generic [ref=e96]: 店铺筛选
+            - combobox "店铺筛选" [ref=e97]:
+              - option "全部店铺" [selected]
+          - generic [ref=e98]:
+            - generic [ref=e99]: 订单状态
+            - combobox "订单状态" [ref=e100]:
+              - option "全部状态" [selected]
+              - option "CREATED"
+              - option "PAID"
+              - option "COMPLETED"
+              - option "CANCELLED"
+              - option "REFUNDED"
+        - generic [ref=e101]:
+          - generic [ref=e102]:
+            - generic [ref=e103]:
+              - heading "订单列表" [level=3] [ref=e104]
+              - paragraph [ref=e105]: "展示当前筛选条件下的订单、支付与履约状态，`PAID` 订单可直接核销完成。"
+            - generic [ref=e106]: 0 条订单
+          - table [ref=e108]:
+            - rowgroup [ref=e109]:
+              - row "订单号 农家乐名称 房型名称 游客昵称 游客账号 入住日期 离店日期 订单金额 订单状态 支付渠道 是否已评价 下单时间 操作" [ref=e110]:
+                - columnheader "订单号" [ref=e111]
+                - columnheader "农家乐名称" [ref=e112]
+                - columnheader "房型名称" [ref=e113]
+                - columnheader "游客昵称" [ref=e114]
+                - columnheader "游客账号" [ref=e115]
+                - columnheader "入住日期" [ref=e116]
+                - columnheader "离店日期" [ref=e117]
+                - columnheader "订单金额" [ref=e118]
+                - columnheader "订单状态" [ref=e119]
+                - columnheader "支付渠道" [ref=e120]
+                - columnheader "是否已评价" [ref=e121]
+                - columnheader "下单时间" [ref=e122]
+                - columnheader "操作" [ref=e123]
+            - rowgroup [ref=e124]:
+              - row "当前筛选条件下暂无订单" [ref=e125]:
+                - cell "当前筛选条件下暂无订单" [ref=e126]
+  - generic [ref=e127]:
+    - generic "Toggle devtools panel" [ref=e128] [cursor=pointer]:
+      - img [ref=e129]
+    - generic "Toggle Component Inspector" [ref=e134] [cursor=pointer]:
+      - img [ref=e135]

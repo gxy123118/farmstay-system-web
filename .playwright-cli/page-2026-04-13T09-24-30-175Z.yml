@@ -1,0 +1,222 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e7]: C
+          - generic [ref=e8]:
+            - paragraph [ref=e9]: Account Desk
+            - heading "Codex Operator" [level=1] [ref=e10]
+        - generic [ref=e11]:
+          - button "返回首页" [ref=e12] [cursor=pointer]
+          - button "刷新资料" [ref=e13] [cursor=pointer]
+          - button "退出登录" [ref=e14] [cursor=pointer]
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - generic [ref=e18]: 账号
+            - strong [ref=e19]: codex_op_1776071457310
+          - generic [ref=e20]:
+            - generic [ref=e21]: 昵称
+            - strong [ref=e22]: Codex Operator
+          - generic [ref=e23]:
+            - generic [ref=e24]: 角色
+            - strong [ref=e25]: operator
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]: 账户金额
+            - strong [ref=e29]: ¥0.00
+          - button "去提现" [ref=e31] [cursor=pointer]
+    - article [ref=e33]:
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - paragraph [ref=e36]: Withdraw Orders
+          - heading "提现记录" [level=2] [ref=e37]
+        - generic [ref=e38]:
+          - button "发起提现" [ref=e39] [cursor=pointer]
+          - button "刷新记录" [ref=e40] [cursor=pointer]
+      - generic [ref=e41]: 当前还没有提现记录。
+    - generic [ref=e42]:
+      - navigation [ref=e43]:
+        - button "我的订单 订单、评价与支付记录" [ref=e44] [cursor=pointer]:
+          - strong [ref=e45]: 我的订单
+          - generic [ref=e46]: 订单、评价与支付记录
+        - button "我的农家乐 店铺资料与房型管理" [ref=e47] [cursor=pointer]:
+          - strong [ref=e48]: 我的农家乐
+          - generic [ref=e49]: 店铺资料与房型管理
+        - button "经营建议 评论驱动分析结果" [ref=e50] [cursor=pointer]:
+          - strong [ref=e51]: 经营建议
+          - generic [ref=e52]: 评论驱动分析结果
+      - generic [ref=e139]:
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - generic [ref=e142]: 店铺资料管理
+            - heading "我的农家乐卡片库" [level=3] [ref=e143]
+            - paragraph [ref=e144]: 先建店铺基础信息，再继续管理房型、餐饮和娱乐活动。
+          - generic [ref=e145]:
+            - button "刷新列表" [ref=e146] [cursor=pointer]
+            - button "新建店铺" [ref=e147] [cursor=pointer]
+        - generic [ref=e148]:
+          - article [ref=e149]:
+            - generic [ref=e150]: 店铺总数
+            - strong [ref=e151]: "1"
+          - article [ref=e152]:
+            - generic [ref=e153]: 当前状态
+            - strong [ref=e154]: 可继续维护
+          - article [ref=e155]:
+            - generic [ref=e156]: 工作建议
+            - strong [ref=e157]: 先补资料，再完善房型和服务
+        - article [ref=e369] [cursor=pointer]:
+          - generic [ref=e370]:
+            - generic [ref=e371]:
+              - generic [ref=e372]:
+                - heading "Codex 测试农家乐" [level=4] [ref=e373]
+                - paragraph [ref=e374]: 成都
+              - generic [ref=e375]: OFFLINE
+            - paragraph [ref=e376]: 这家店铺还没有完善对外介绍。
+            - strong [ref=e378]: standard
+  - generic [ref=e127]:
+    - generic "Toggle devtools panel" [ref=e128] [cursor=pointer]:
+      - img [ref=e129]
+    - generic "Toggle Component Inspector" [ref=e134] [cursor=pointer]:
+      - img [ref=e135]
+  - generic [ref=e380]:
+    - generic [ref=e381]:
+      - generic [ref=e382]:
+        - generic [ref=e383]: 编辑模式
+        - heading "Codex 测试农家乐" [level=3] [ref=e384]
+      - button "关闭" [ref=e385] [cursor=pointer]
+    - generic [ref=e386]:
+      - generic [ref=e387]:
+        - article [ref=e388]:
+          - generic [ref=e389]: 城市
+          - strong [ref=e390]: 成都
+        - article [ref=e391]:
+          - generic [ref=e392]: 联系方式
+          - strong [ref=e393]: "-"
+        - article [ref=e394]:
+          - generic [ref=e395]: 资源概况
+          - strong [ref=e396]: 1 房型 · 0 餐饮 · 0 活动
+      - generic [ref=e397]:
+        - generic [ref=e398]:
+          - generic [ref=e399]:
+            - generic [ref=e400]: Step 1
+            - heading "基础资料" [level=4] [ref=e401]
+          - generic [ref=e402]: 店铺名称、城市、封面图、价格等级
+        - generic [ref=e403]:
+          - generic [ref=e404]:
+            - generic [ref=e405]: 店铺名称
+            - textbox "店铺名称" [ref=e406]:
+              - /placeholder: 例如：溪谷稻田农宿
+              - text: Codex 测试农家乐
+          - generic [ref=e407]:
+            - generic [ref=e408]: 所在城市
+            - textbox "所在城市" [ref=e409]:
+              - /placeholder: 例如：成都
+              - text: 成都
+          - generic [ref=e410]:
+            - generic [ref=e411]: 详细地址
+            - textbox "详细地址" [ref=e412]:
+              - /placeholder: 填写精确到乡镇/村落的地址
+          - generic [ref=e413]:
+            - generic [ref=e414]: 封面图片
+            - generic [ref=e415]:
+              - generic [ref=e417]: 上传店铺封面图
+              - generic [ref=e418]:
+                - generic [ref=e419] [cursor=pointer]:
+                  - text: 选择图片
+                  - button "选择图片" [ref=e420]
+                - button "移除图片" [ref=e421] [cursor=pointer]
+                - generic [ref=e422]: 支持 jpg、png、webp，大小不超过 5MB
+          - generic [ref=e423]:
+            - generic [ref=e424]: 联系方式
+            - textbox "联系方式" [ref=e425]:
+              - /placeholder: 用于游客咨询
+          - generic [ref=e426]:
+            - generic [ref=e427]: 价格区间
+            - textbox "价格区间" [ref=e428]:
+              - /placeholder: 例如：¥268-¥588
+          - generic [ref=e429]:
+            - generic [ref=e430]: 价格等级
+            - combobox "价格等级" [ref=e431]:
+              - option "标准" [selected]
+              - option "优选"
+          - generic [ref=e432]:
+            - generic [ref=e433]: 店铺标签
+            - textbox "店铺标签" [ref=e434]:
+              - /placeholder: 例如：亲子,采摘,露营
+          - generic [ref=e435]:
+            - generic [ref=e436]: 店铺介绍
+            - textbox "店铺介绍" [ref=e437]:
+              - /placeholder: 突出环境、体验特色、适合人群和核心服务
+      - generic [ref=e438]:
+        - generic [ref=e440]:
+          - generic [ref=e441]: Step 2
+          - heading "房型、餐饮与娱乐活动" [level=4] [ref=e442]
+        - generic [ref=e443]:
+          - generic [ref=e444]:
+            - generic [ref=e445]:
+              - generic [ref=e446]:
+                - heading "房型" [level=5] [ref=e447]
+                - paragraph [ref=e448]: 已编辑 1 个房型，新增、修改和删除会在右下角“保存修改”时统一提交
+              - button "新增房型" [ref=e449] [cursor=pointer]
+            - article [ref=e451]:
+              - button "山景双床房 双床 · 2 人 · 库存 3 上架中 山景 已保存 ¥188" [ref=e452] [cursor=pointer]:
+                - generic [ref=e453]:
+                  - strong [ref=e454]: 山景双床房
+                  - paragraph [ref=e455]: 双床 · 2 人 · 库存 3
+                  - generic [ref=e456]:
+                    - generic [ref=e457]: 上架中
+                    - generic [ref=e458]: 山景
+                    - generic [ref=e459]: 已保存
+                - generic [ref=e460]: ¥188
+              - button "删除" [ref=e462] [cursor=pointer]
+          - generic [ref=e463]:
+            - generic [ref=e464]:
+              - generic [ref=e465]:
+                - heading "餐饮服务" [level=5] [ref=e466]
+                - paragraph [ref=e467]: 已配置 0 项餐饮服务
+              - button "新增餐饮" [ref=e468] [cursor=pointer]
+            - generic [ref=e469]:
+              - strong [ref=e470]: 当前店铺还没有餐饮服务
+              - paragraph [ref=e471]: 新增后会显示在上面的列表中，点击条目可直接编辑。
+            - generic [ref=e472]:
+              - strong [ref=e474]: 新增餐饮
+              - generic [ref=e475]:
+                - textbox "餐饮名称" [ref=e476]
+                - spinbutton [ref=e477]
+              - generic [ref=e478]:
+                - textbox "标签，例如：早餐,土灶" [ref=e479]
+                - combobox [ref=e480]:
+                  - option "上架中" [selected]
+                  - option "暂不开放"
+              - textbox "餐饮介绍" [ref=e481]
+              - button "添加餐饮" [ref=e482] [cursor=pointer]
+          - generic [ref=e483]:
+            - generic [ref=e484]:
+              - generic [ref=e485]:
+                - heading "娱乐活动" [level=5] [ref=e486]
+                - paragraph [ref=e487]: 已配置 0 项娱乐活动
+              - button "新增活动" [ref=e488] [cursor=pointer]
+            - generic [ref=e489]:
+              - strong [ref=e490]: 当前店铺还没有娱乐活动
+              - paragraph [ref=e491]: 新增后会显示在上面的列表中，点击条目可直接编辑。
+            - generic [ref=e492]:
+              - strong [ref=e494]: 新增活动
+              - generic [ref=e495]:
+                - textbox "活动名称" [ref=e496]
+                - textbox "活动时间，例如：每周六 16:00" [ref=e497]
+              - generic [ref=e498]:
+                - spinbutton [ref=e499]
+                - spinbutton [ref=e500]
+                - combobox [ref=e501]:
+                  - option "上架中" [selected]
+                  - option "暂不开放"
+              - textbox "标签，例如：露营,手作,亲子" [ref=e502]
+              - textbox "活动介绍" [ref=e503]
+              - button "添加活动" [ref=e504] [cursor=pointer]
+    - generic [ref=e505]:
+      - button "恢复当前数据" [ref=e506] [cursor=pointer]
+      - generic [ref=e507]:
+        - button "下架店铺" [ref=e508] [cursor=pointer]
+        - button "保存修改" [ref=e509] [cursor=pointer]

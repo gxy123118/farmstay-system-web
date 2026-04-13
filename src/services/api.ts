@@ -26,6 +26,15 @@ import type {
   AdminUser,
   PageResponse,
 } from '../types/admin'
+import type {
+  ActivityManage,
+  DiningManage,
+  FarmStayManage,
+  FarmStayResourceSavePayload,
+  FarmStayResourceSaveResponse,
+  RoomManage,
+  UploadImageResponse,
+} from '../types/farmstay-management'
 
 export const LOGIN_REDIRECT_KEY = 'farmstay-redirect'
 
@@ -39,6 +48,13 @@ type ApiResponse<T> = {
   data: T
 }
 
+const mapApiMessage = (message: string) => {
+  if (message === 'Account has been disabled') {
+    return '账号已被禁用，请联系管理员'
+  }
+  return message
+}
+
 export type AuthPayload = {
   token: string
   loginType: string
@@ -50,9 +66,10 @@ export type AuthPayload = {
   balance?: number
 }
 
-const buildHeaders = () => {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+const buildHeaders = (body?: unknown) => {
+  const headers: Record<string, string> = {}
+  if (!(body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json'
   }
   const payload = readAuthPayload()
   if (payload?.token) {
@@ -68,8 +85,8 @@ const request = async <T = unknown>(
 ): Promise<T> => {
   const response = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: buildHeaders(),
-    body: body ? JSON.stringify(body) : undefined,
+    headers: buildHeaders(body),
+    body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
   })
   const payload = (await response.json()) as ApiResponse<T>
   if (!response.ok || payload.code >= 400) {
@@ -89,7 +106,7 @@ const request = async <T = unknown>(
         }
       }
     }
-    throw new Error(message)
+    throw new Error(mapApiMessage(message))
   }
   return payload.data
 }
@@ -141,25 +158,43 @@ export const apiListFarmstays = (params: {
   return request(`/api/farmstays/search${suffix}`)
 }
 
-export const apiFarmstayDetail = (id: number) => request(`/api/farmstays/detail/${id}`)
+export const apiFarmstayDetail = (id: number) => request<FarmStayManage>(`/api/farmstays/detail/${id}`)
 export const apiCreateFarmstay = (payload: Record<string, unknown>) =>
-  request('/api/farmstays', 'POST', payload)
+  request<FarmStayManage>('/api/farmstays', 'POST', payload)
 export const apiUpdateFarmstay = (id: number, payload: Record<string, unknown>) =>
-  request(`/api/farmstays/${id}`, 'PUT', payload)
+  request<FarmStayManage>(`/api/farmstays/${id}`, 'PUT', payload)
+export const apiSaveFarmstayResources = (id: number, payload: FarmStayResourceSavePayload) =>
+  request<FarmStayResourceSaveResponse>(`/api/farmstays/${id}/resources`, 'PUT', payload)
+export const apiOfflineFarmstay = (id: number) => request<FarmStayManage>(`/api/farmstays/${id}/offline`, 'POST')
+export const apiPublishFarmstay = (id: number) => request<FarmStayManage>(`/api/farmstays/${id}/publish`, 'POST')
 export const apiDeleteFarmstay = (id: number) => request(`/api/farmstays/${id}`, 'DELETE')
-export const apiOwnerFarmstays = () => request('/api/farmstays/owner')
+export const apiOwnerFarmstays = () => request<FarmStayManage[]>('/api/farmstays/owner')
 
 export const apiListRooms = (farmStayId: number) =>
-  request(`/api/rooms?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
-export const apiCreateRoom = (payload: Record<string, unknown>) => request('/api/rooms', 'POST', payload)
+  request<RoomManage[]>(`/api/rooms?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
+export const apiCreateRoom = (payload: Record<string, unknown>) => request<RoomManage>('/api/rooms', 'POST', payload)
 export const apiUpdateRoom = (id: number, payload: Record<string, unknown>) =>
-  request(`/api/rooms/${id}`, 'PUT', payload)
+  request<RoomManage>(`/api/rooms/${id}`, 'PUT', payload)
+export const apiDeleteRoom = (id: number) => request<void>(`/api/rooms/${id}`, 'DELETE')
 
 export const apiListDining = (farmStayId: number) =>
-  request(`/api/dinings?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
+  request<DiningManage[]>(`/api/dinings?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
+export const apiCreateDining = (payload: Record<string, unknown>) =>
+  request<DiningManage>('/api/dinings', 'POST', payload)
+export const apiUpdateDining = (id: number, payload: Record<string, unknown>) =>
+  request<DiningManage>(`/api/dinings/${id}`, 'PUT', payload)
 
 export const apiListActivities = (farmStayId: number) =>
-  request(`/api/activities?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
+  request<ActivityManage[]>(`/api/activities?${new URLSearchParams({ farmStayId: String(farmStayId) }).toString()}`)
+export const apiCreateActivity = (payload: Record<string, unknown>) =>
+  request<ActivityManage>('/api/activities', 'POST', payload)
+export const apiUpdateActivity = (id: number, payload: Record<string, unknown>) =>
+  request<ActivityManage>(`/api/activities/${id}`, 'PUT', payload)
+export const apiUploadImage = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request<UploadImageResponse>('/api/uploads/images', 'POST', formData)
+}
 
 export const apiCreateBooking = (payload: BookingCreatePayload) =>
   request<BookingCreateResponse>('/api/bookings', 'POST', payload)

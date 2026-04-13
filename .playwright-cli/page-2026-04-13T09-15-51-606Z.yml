@@ -1,0 +1,135 @@
+- generic [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e7]: C
+          - generic [ref=e8]:
+            - paragraph [ref=e9]: Account Desk
+            - heading "Codex Operator" [level=1] [ref=e10]
+        - generic [ref=e11]:
+          - button "返回首页" [ref=e12] [cursor=pointer]
+          - button "刷新资料" [ref=e13] [cursor=pointer]
+          - button "退出登录" [ref=e14] [cursor=pointer]
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - generic [ref=e18]: 账号
+            - strong [ref=e19]: codex_op_1776071457310
+          - generic [ref=e20]:
+            - generic [ref=e21]: 昵称
+            - strong [ref=e22]: Codex Operator
+          - generic [ref=e23]:
+            - generic [ref=e24]: 角色
+            - strong [ref=e25]: operator
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]: 账户金额
+            - strong [ref=e29]: ¥0.00
+          - button "去提现" [ref=e31] [cursor=pointer]
+    - article [ref=e33]:
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - paragraph [ref=e36]: Withdraw Orders
+          - heading "提现记录" [level=2] [ref=e37]
+        - generic [ref=e38]:
+          - button "发起提现" [ref=e39] [cursor=pointer]
+          - button "刷新记录" [ref=e40] [cursor=pointer]
+      - generic [ref=e41]: 当前还没有提现记录。
+    - generic [ref=e42]:
+      - navigation [ref=e43]:
+        - button "我的订单 订单、评价与支付记录" [ref=e44] [cursor=pointer]:
+          - strong [ref=e45]: 我的订单
+          - generic [ref=e46]: 订单、评价与支付记录
+        - button "我的农家乐 店铺资料与房型管理" [ref=e47] [cursor=pointer]:
+          - strong [ref=e48]: 我的农家乐
+          - generic [ref=e49]: 店铺资料与房型管理
+        - button "经营建议 评论驱动分析结果" [ref=e50] [cursor=pointer]:
+          - strong [ref=e51]: 经营建议
+          - generic [ref=e52]: 评论驱动分析结果
+      - generic [ref=e139]:
+        - generic [ref=e140]:
+          - generic [ref=e141]:
+            - generic [ref=e142]: 店铺资料管理
+            - heading "我的农家乐卡片库" [level=3] [ref=e143]
+            - paragraph [ref=e144]: 先建店铺基础信息，再继续管理房型、餐饮和娱乐活动。
+          - generic [ref=e145]:
+            - button "刷新列表" [ref=e146] [cursor=pointer]
+            - button "新建店铺" [active] [ref=e147] [cursor=pointer]
+        - generic [ref=e148]:
+          - article [ref=e149]:
+            - generic [ref=e150]: 店铺总数
+            - strong [ref=e151]: "0"
+          - article [ref=e152]:
+            - generic [ref=e153]: 当前状态
+            - strong [ref=e154]: 待创建
+          - article [ref=e155]:
+            - generic [ref=e156]: 工作建议
+            - strong [ref=e157]: 先补资料，再完善房型和服务
+        - generic [ref=e158]:
+          - strong [ref=e159]: 还没有店铺资料
+          - paragraph [ref=e160]: 点击右上角“新建店铺”，创建第一张农家乐资料卡。
+  - generic [ref=e127]:
+    - generic "Toggle devtools panel" [ref=e128] [cursor=pointer]:
+      - img [ref=e129]
+    - generic "Toggle Component Inspector" [ref=e134] [cursor=pointer]:
+      - img [ref=e135]
+  - generic [ref=e162]:
+    - generic [ref=e163]:
+      - generic [ref=e164]:
+        - generic [ref=e165]: 创建模式
+        - heading "新建农家乐资料" [level=3] [ref=e166]
+      - button "关闭" [ref=e167] [cursor=pointer]
+    - generic [ref=e169]:
+      - generic [ref=e170]:
+        - generic [ref=e171]:
+          - generic [ref=e172]: Step 1
+          - heading "基础资料" [level=4] [ref=e173]
+        - generic [ref=e174]: 店铺名称、城市、封面图、价格等级
+      - generic [ref=e175]:
+        - generic [ref=e176]:
+          - generic [ref=e177]: 店铺名称
+          - textbox "店铺名称" [ref=e178]:
+            - /placeholder: 例如：溪谷稻田农宿
+        - generic [ref=e179]:
+          - generic [ref=e180]: 所在城市
+          - textbox "所在城市" [ref=e181]:
+            - /placeholder: 例如：成都
+        - generic [ref=e182]:
+          - generic [ref=e183]: 详细地址
+          - textbox "详细地址" [ref=e184]:
+            - /placeholder: 填写精确到乡镇/村落的地址
+        - generic [ref=e185]:
+          - generic [ref=e186]: 封面图片
+          - generic [ref=e187]:
+            - generic [ref=e189]: 上传店铺封面图
+            - generic [ref=e190]:
+              - generic [ref=e191] [cursor=pointer]:
+                - text: 选择图片
+                - button "选择图片" [ref=e192]
+              - button "移除图片" [ref=e193] [cursor=pointer]
+              - generic [ref=e194]: 支持 jpg、png、webp，大小不超过 5MB
+        - generic [ref=e195]:
+          - generic [ref=e196]: 联系方式
+          - textbox "联系方式" [ref=e197]:
+            - /placeholder: 用于游客咨询
+        - generic [ref=e198]:
+          - generic [ref=e199]: 价格区间
+          - textbox "价格区间" [ref=e200]:
+            - /placeholder: 例如：¥268-¥588
+        - generic [ref=e201]:
+          - generic [ref=e202]: 价格等级
+          - combobox "价格等级" [ref=e203]:
+            - option "标准" [selected]
+            - option "优选"
+        - generic [ref=e204]:
+          - generic [ref=e205]: 店铺标签
+          - textbox "店铺标签" [ref=e206]:
+            - /placeholder: 例如：亲子,采摘,露营
+        - generic [ref=e207]:
+          - generic [ref=e208]: 店铺介绍
+          - textbox "店铺介绍" [ref=e209]:
+            - /placeholder: 突出环境、体验特色、适合人群和核心服务
+    - generic [ref=e210]:
+      - button "清空表单" [ref=e211] [cursor=pointer]
+      - button "创建店铺" [ref=e213] [cursor=pointer]

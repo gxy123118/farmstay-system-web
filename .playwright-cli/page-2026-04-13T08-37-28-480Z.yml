@@ -1,0 +1,168 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: 乡野度假平台
+        - heading "发现真实乡村假期，连接游客与经营者" [level=1] [ref=e7]
+        - paragraph [ref=e8]: 支持搜索、预订、支付、评价和经营管理，让农宿业务在一个页面体系里完成。
+      - button "登录 / 注册" [ref=e10] [cursor=pointer]
+      - generic [ref=e11]:
+        - article [ref=e12]:
+          - strong [ref=e13]: "25"
+          - generic [ref=e14]: 合作农家乐
+        - article [ref=e15]:
+          - strong [ref=e16]: "100"
+          - generic [ref=e17]: 日均订单
+        - article [ref=e18]:
+          - strong [ref=e19]: "4.7"
+          - generic [ref=e20]: 平均评分
+    - generic [ref=e21]:
+      - heading "快速筛选" [level=2] [ref=e22]
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]: 城市
+          - textbox "城市" [ref=e26]:
+            - /placeholder: 如 成都 / 杭州
+        - generic [ref=e27]:
+          - generic [ref=e28]: 关键字
+          - textbox "关键字" [ref=e29]:
+            - /placeholder: 名称、特色、标签
+        - generic [ref=e30]:
+          - generic [ref=e31]: 价格等级
+          - combobox "价格等级" [ref=e32]:
+            - option "不限" [selected]
+            - option "标准"
+            - option "优选"
+        - generic [ref=e33]:
+          - generic [ref=e34]: 标签
+          - textbox "标签" [ref=e35]:
+            - /placeholder: 如 亲子,烧烤,采摘
+      - generic [ref=e36]:
+        - button "搜索" [ref=e37] [cursor=pointer]
+        - button "刷新列表" [ref=e38] [cursor=pointer]
+        - button "重置筛选" [ref=e39] [cursor=pointer]
+    - generic [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - heading "推荐农家乐" [level=2] [ref=e43]
+          - paragraph [ref=e44]: 点击卡片查看详情与预订服务
+        - paragraph [ref=e45]: 第 1 / 4 页 · 显示 1-8 / 共 25 条
+      - generic [ref=e46]:
+        - article [ref=e47] [cursor=pointer]:
+          - generic [ref=e48]:
+            - generic [ref=e49]:
+              - generic [ref=e50]:
+                - heading "星湖慢居" [level=3] [ref=e51]
+                - paragraph [ref=e52]: 绍兴嵊州
+              - generic [ref=e53]: ★ --
+            - paragraph [ref=e54]: 湖边慢生活主题民宿，清晨可看湖雾，夜晚适合围炉、赏星和轻运动。
+            - generic [ref=e55]:
+              - strong [ref=e56]: ￥458-￥1088
+              - generic [ref=e57]:
+                - generic [ref=e58]: 湖景
+                - generic [ref=e59]: 露台
+                - generic [ref=e60]: 围炉
+        - article [ref=e61] [cursor=pointer]:
+          - generic [ref=e62]:
+            - generic [ref=e63]:
+              - generic [ref=e64]:
+                - heading "1" [level=3] [ref=e65]
+                - paragraph [ref=e66]: "2"
+              - generic [ref=e67]: ★ --
+            - paragraph [ref=e68]: "1"
+            - generic [ref=e69]:
+              - strong [ref=e70]: "2"
+              - generic [ref=e72]: "1"
+        - article [ref=e73] [cursor=pointer]:
+          - generic [ref=e74]:
+            - generic [ref=e75]:
+              - generic [ref=e76]:
+                - heading "小麦田农宿" [level=3] [ref=e77]
+                - paragraph [ref=e78]: 郑州
+              - generic [ref=e79]: ★ --
+            - paragraph [ref=e80]: 小麦田
+            - generic [ref=e81]:
+              - strong [ref=e82]: 1000-2999
+              - generic [ref=e84]: 露营
+        - article [ref=e85] [cursor=pointer]:
+          - generic [ref=e86]:
+            - generic [ref=e87]:
+              - generic [ref=e88]:
+                - heading "云栖竹舍" [level=3] [ref=e89]
+                - paragraph [ref=e90]: 湖州安吉
+              - generic [ref=e91]: ★ --
+            - paragraph [ref=e92]: 主打竹海观景与静养度假，适合情侣出游、亲子周末和企业小团建。
+            - generic [ref=e93]:
+              - strong [ref=e94]: ￥428-￥988
+              - generic [ref=e95]:
+                - generic [ref=e96]: 竹海
+                - generic [ref=e97]: 下午茶
+                - generic [ref=e98]: 亲子
+        - article [ref=e99] [cursor=pointer]:
+          - generic [ref=e100]:
+            - generic [ref=e101]:
+              - generic [ref=e102]:
+                - heading "稻香小院" [level=3] [ref=e103]
+                - paragraph [ref=e104]: 杭州桐庐
+              - generic [ref=e105]: ★ 4.5
+            - paragraph [ref=e106]: 围绕稻田生活打造的乡村民宿，提供农事体验、土灶晚餐和亲子活动。
+            - generic [ref=e107]:
+              - strong [ref=e108]: ￥368-￥768
+              - generic [ref=e109]:
+                - generic [ref=e110]: 稻田
+                - generic [ref=e111]: 土灶
+                - generic [ref=e112]: 亲子
+        - article [ref=e113] [cursor=pointer]:
+          - generic [ref=e114]:
+            - generic [ref=e115]:
+              - generic [ref=e116]:
+                - heading "桃源果墅" [level=3] [ref=e117]
+                - paragraph [ref=e118]: 宁波宁海
+              - generic [ref=e119]: ★ 4.0
+            - paragraph [ref=e120]: 果园里的木屋与庭院组合，适合家庭度假、采摘和乡村手作课程。
+            - generic [ref=e121]:
+              - strong [ref=e122]: ￥398-￥898
+              - generic [ref=e123]:
+                - generic [ref=e124]: 果园
+                - generic [ref=e125]: 木屋
+                - generic [ref=e126]: 采摘
+        - article [ref=e127] [cursor=pointer]:
+          - generic [ref=e128]:
+            - generic [ref=e129]:
+              - generic [ref=e130]:
+                - heading "Tianyuan Retreat" [level=3] [ref=e131]
+                - paragraph [ref=e132]: Anji
+              - generic [ref=e133]: ★ 4.9
+            - paragraph [ref=e134]: Cozy villas surrounded by bamboo, tea picking, and craft workshops.
+            - generic [ref=e135]:
+              - strong [ref=e136]: ¥680-¥1299
+              - generic [ref=e137]:
+                - generic [ref=e138]: tea
+                - generic [ref=e139]: spa
+                - generic [ref=e140]: kid-friendly
+        - article [ref=e141] [cursor=pointer]:
+          - generic [ref=e142]:
+            - generic [ref=e143]:
+              - generic [ref=e144]:
+                - heading "Xian River Lodge" [level=3] [ref=e145]
+                - paragraph [ref=e146]: Dujiangyan
+              - generic [ref=e147]: ★ 4.8
+            - paragraph [ref=e148]: Wooden cabins along the river, rafting in the morning and campside music at night.
+            - generic [ref=e149]:
+              - strong [ref=e150]: ¥480-¥860
+              - generic [ref=e151]:
+                - generic [ref=e152]: rafting
+                - generic [ref=e153]: bbq
+                - generic [ref=e154]: team-building
+      - generic [ref=e155]:
+        - button "上一页" [disabled] [ref=e156]
+        - strong [ref=e157]: 1 / 4
+        - button "下一页" [ref=e158] [cursor=pointer]
+  - generic [ref=e159]:
+    - generic "Toggle devtools panel" [ref=e160] [cursor=pointer]:
+      - img [ref=e161]
+    - generic "Toggle Component Inspector" [ref=e166] [cursor=pointer]:
+      - img [ref=e167]
+  - button "AI 旅途小助手" [ref=e172]:
+    - generic [ref=e173]: AI
+    - generic [ref=e174]: 旅途小助手

@@ -73,3 +73,16 @@
 - Personal center should call `GET /api/auth/me` after entering the page to refresh the current auth payload and repair stale local cache.
 - Operator order pages should render `visitorName`, `visitorUsername`, `contactName`, `contactPhone`, and `guests` directly from the booking API response instead of issuing per-order user lookups.
 - `src/types/booking.ts` is the single source of truth for booking detail fields used by the frontend.
+
+## 10. 2026-04-13 Operator Farmstay Unified Save
+
+- `OperatorFarmstay.vue` now follows a strict "single submit" rule on edit mode:
+  - Add/update/delete room/dining/activity only changes local draft state.
+  - Backend persistence happens only when user clicks right-bottom `保存修改`.
+- Frontend sends one request:
+  - `PUT /api/farmstays/{id}/resources`
+  - Payload includes farmstay base fields + `rooms` + `dinings` + `activities`.
+- Frontend no longer relies on per-item save calls for this page.
+- Draft deletion behavior:
+  - Removing a saved item from draft means it is omitted from payload.
+  - Backend treats omitted existing items as delete operations.

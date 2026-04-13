@@ -817,6 +817,8 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: auto;
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: 6px;
 }
 
@@ -926,6 +928,8 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: auto;
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: 10px;
   padding-right: 4px;
 }
